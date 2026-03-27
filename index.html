@@ -325,9 +325,11 @@
     .map-container {
       flex: 1;
       position: relative;
-      overflow: auto;
+      overflow: hidden;
       background: #1a1a2e;
       transition: background-color 0.3s ease;
+      display: flex;
+      flex-direction: column;
     }
 
     body.light-mode .map-container {
@@ -336,9 +338,11 @@
 
     svg {
       display: block;
-      margin: auto;
-      max-width: 100%;
-      height: auto;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     .state-path {
@@ -418,7 +422,7 @@
     }
 
     .tooltip {
-      position: absolute;
+      position: fixed;
       background: rgba(22, 33, 62, 0.95);
       color: #e0e0e0;
       padding: 8px 12px;
@@ -863,7 +867,7 @@
       <div class="map-container" id="mapContainer">
         <div class="map-title" id="mapTitle" contenteditable="true">My US Map</div>
         <div class="map-subtitle" id="mapSubtitle" contenteditable="true" data-placeholder="Click to add subtitle"></div>
-        <svg id="mapSVG" viewBox="0 0 960 600" style="width: 100%; height: 100%;">
+        <svg id="mapSVG" viewBox="0 0 960 600" preserveAspectRatio="xMidYMid meet">
           <g id="statesGroup"></g>
         </svg>
         <div class="legend-group" id="legendDisplay" style="display: none;"></div>
@@ -992,20 +996,37 @@
       }
     }
 
+    // FIPS code to state name lookup (us-atlas@3 uses FIPS as feature.id)
+    const fipsToState = {
+      '01': 'Alabama', '02': 'Alaska', '04': 'Arizona', '05': 'Arkansas',
+      '06': 'California', '08': 'Colorado', '09': 'Connecticut', '10': 'Delaware',
+      '11': 'District of Columbia', '12': 'Florida', '13': 'Georgia', '15': 'Hawaii',
+      '16': 'Idaho', '17': 'Illinois', '18': 'Indiana', '19': 'Iowa',
+      '20': 'Kansas', '21': 'Kentucky', '22': 'Louisiana', '23': 'Maine',
+      '24': 'Maryland', '25': 'Massachusetts', '26': 'Michigan', '27': 'Minnesota',
+      '28': 'Mississippi', '29': 'Missouri', '30': 'Montana', '31': 'Nebraska',
+      '32': 'Nevada', '33': 'New Hampshire', '34': 'New Jersey', '35': 'New Mexico',
+      '36': 'New York', '37': 'North Carolina', '38': 'North Dakota', '39': 'Ohio',
+      '40': 'Oklahoma', '41': 'Oregon', '42': 'Pennsylvania', '44': 'Rhode Island',
+      '45': 'South Carolina', '46': 'South Dakota', '47': 'Tennessee', '48': 'Texas',
+      '49': 'Utah', '50': 'Vermont', '51': 'Virginia', '53': 'Washington',
+      '54': 'West Virginia', '55': 'Wisconsin', '56': 'Wyoming',
+      '72': 'Puerto Rico'
+    };
+
     function renderStatesFromTopology(topology) {
       const statesGroup = document.getElementById('statesGroup');
       statesGroup.innerHTML = '';
 
       // Get state features from topology
       const states = topojson.feature(topology, topology.objects.states).features;
-      const stateMesh = topojson.mesh(topology, topology.objects.states, (a, b) => a !== b);
 
       // Create path generator (Albers projection is already applied in the TopoJSON)
       const pathGenerator = d => {
         let pathData = '';
         if (d.type === 'Polygon') {
           d.coordinates.forEach((ring, i) => {
-            pathData += (i > 0 ? 'M' : 'M') + ring.map(p => p.join(',')).join('L') + 'Z';
+            pathData += 'M' + ring.map(p => p.join(',')).join('L') + 'Z';
           });
         } else if (d.type === 'MultiPolygon') {
           d.coordinates.forEach(polygon => {
@@ -1019,7 +1040,9 @@
 
       // Render each state
       states.forEach((feature, index) => {
-        const stateName = feature.properties.name;
+        // us-atlas@3 uses FIPS codes as feature.id, not feature.properties.name
+        const fipsCode = String(feature.id).padStart(2, '0');
+        const stateName = fipsToState[fipsCode] || feature.properties?.name || `Unknown (${feature.id})`;
         const geometry = feature.geometry;
         const pathData = pathGenerator(geometry);
 
@@ -1144,9 +1167,18 @@
       appState.selectedColor = color;
       document.querySelectorAll('.color-swatch').forEach(swatch => {
         swatch.classList.remove('active');
+        if (swatch.style.backgroundColor === color || rgbToHex(swatch.style.backgroundColor) === color.toLowerCase()) {
+          swatch.classList.add('active');
+        }
       });
-      event.target.classList.add('active');
       updateHexInput();
+    }
+
+    function rgbToHex(rgb) {
+      if (!rgb || rgb.startsWith('#')) return rgb;
+      const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+      if (!match) return rgb;
+      return '#' + [match[1], match[2], match[3]].map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
     }
 
     function updateHexInput() {
@@ -1199,8 +1231,8 @@
 
     function moveTooltip(e) {
       const tooltip = document.getElementById('tooltip');
-      tooltip.style.left = (e.pageX + 10) + 'px';
-      tooltip.style.top = (e.pageY + 10) + 'px';
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top = (e.clientY + 12) + 'px';
     }
 
     function hideTooltip() {
@@ -1452,7 +1484,15 @@
     function exportPNG() {
       showMessage('Exporting PNG...', 'info');
       const mapContainer = document.getElementById('mapContainer');
-      html2canvas(mapContainer, { backgroundColor: null }).then(canvas => {
+      const bgColor = appState.darkMode ? '#1a1a2e' : '#f5f5f5';
+      html2canvas(mapContainer, {
+        backgroundColor: bgColor,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: mapContainer.scrollWidth,
+        windowHeight: mapContainer.scrollHeight,
+        useCORS: true
+      }).then(canvas => {
         const link = document.createElement('a');
         link.href = canvas.toDataURL('image/png');
         link.download = 'cakemapper.png';
@@ -1673,4 +1713,3 @@
   </script>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
