@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cakemapper - US State Mapping</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    body.light-mode {
+      background: #f5f5f5;
+      color: #2c2c2c;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 300px;
+      background: #16213e;
+      border-right: 1px solid #3a3a5a;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    body.light-mode .sidebar {
+      background: #ffffff;
+      border-right-color: #e0e0e0;
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      gap: 10px;
+    }
+
+    .sidebar-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .theme-toggle {
+      background: none;
+      border: none;
+      color: #667eea;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.1);
+    }
+
+    .section {
+      margin-bottom: 25px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #a0a0a0;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    body.light-mode .section-title {
+      color: #666;
+    }
+
+    .section-content {
+      background: #0f3460;
+      border-radius: 6px;
+      padding: 12px;
+      border: 1px solid #3a3a5a;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    body.light-mode .section-content {
+      background: #f9f9f9;
+      border-color: #e0e0e0;
+    }
+
+    .instructions-text {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #a0a0a0;
+    }
+
+    body.light-mode .instructions-text {
+      color: #666;
+    }
+
+    /* Color Palette */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .color-swatch {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 4px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .color-swatch:hover {
+      transform: scale(1.05);
+    }
+
+    .color-swatch.active {
+      border-color: #667eea;
+      box-shadow: 0 0 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .color-inputs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .color-picker-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 4px;
+      border: 1px solid #3a3a5a;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .color-picker-btn:hover {
+      border-color: #667eea;
+    }
+
+    .hex-input {
+      flex: 1;
+      background: #1a1a2e;
+      border: 1px solid #3a3a5a;
+      color: #e0e0e0;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: monospace;
+      transition: border-color 0.2s;
+    }
+
+    body.light-mode .hex-input {
+      background: #fff;
+      border-color: #e0e0e0;
+      color: #2c2c2c;
+    }
+
+    .hex-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    /* Legend Builder */
+    .legend-entry {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+
+    .legend-color {
+      width: 24px;
+      height: 24px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .legend-inputs {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .legend-label-input {
+      background: #1a1a2e;
+      border: 1px solid #3a3a5a;
+      color: #e0e0e0;
+      padding: 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      transition: border-color 0.2s;
+    }
+
+    body.light-mode .legend-label-input {
+      background: #fff;
+      border-color: #e0e0e0;
+      color: #2c2c2c;
+    }
+
+    .legend-label-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .legend-remove {
+      background: none;
+      border: none;
+      color: #a0a0a0;
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 16px;
+      transition: color 0.2s;
+    }
+
+    .legend-remove:hover {
+      color: #ff6b6b;
+    }
+
+    .btn {
+      background: #667eea;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.2s, transform 0.1s;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    .btn:hover {
+      background: #7c8ff5;
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn.secondary {
+      background: #3a3a5a;
+      color: #e0e0e0;
+    }
+
+    body.light-mode .btn.secondary {
+      background: #e0e0e0;
+      color: #2c2c2c;
+    }
+
+    .btn.secondary:hover {
+      background: #4a4a6a;
+    }
+
+    body.light-mode .btn.secondary:hover {
+      background: #d0d0d0;
+    }
+
+    .btn.danger {
+      background: #dc3545;
+    }
+
+    .btn.danger:hover {
+      background: #e85d5d;
+    }
+
+    .btn-pro {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pro-badge {
+      position: absolute;
+      top: 2px;
+      right: 6px;
+      background: #ffd700;
+      color: #1a1a2e;
+      font-size: 8px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+
+    /* Main map area */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #1a1a2e;
+      transition: background-color 0.3s ease;
+    }
+
+    body.light-mode .main {
+      background: #f5f5f5;
+    }
+
+    .map-container {
+      flex: 1;
+      position: relative;
+      overflow: auto;
+      background: #1a1a2e;
+      transition: background-color 0.3s ease;
+    }
+
+    body.light-mode .map-container {
+      background: #f5f5f5;
+    }
+
+    svg {
+      display: block;
+      margin: auto;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .state-path {
+      fill: #2a2a4a;
+      stroke: #3a3a5a;
+      stroke-width: 1;
+      cursor: pointer;
+      transition: fill 0.2s, stroke 0.2s;
+    }
+
+    body.light-mode .state-path {
+      fill: #e8e8e8;
+      stroke: #d0d0d0;
+    }
+
+    .state-path:hover {
+      stroke-width: 1.5;
+      stroke: #667eea;
+    }
+
+    .state-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+      fill: #a0a0a0;
+      transition: fill 0.2s;
+    }
+
+    body.light-mode .state-label {
+      fill: #666;
+    }
+
+    .legend-group {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(22, 33, 62, 0.9);
+      border: 1px solid #3a3a5a;
+      border-radius: 6px;
+      padding: 12px;
+      max-width: 250px;
+      backdrop-filter: blur(4px);
+    }
+
+    body.light-mode .legend-group {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: #e0e0e0;
+    }
+
+    .legend-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #667eea;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      color: #a0a0a0;
+    }
+
+    body.light-mode .legend-item {
+      color: #666;
+    }
+
+    .legend-item-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: rgba(22, 33, 62, 0.95);
+      color: #e0e0e0;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 1000;
+      white-space: nowrap;
+      border: 1px solid #3a3a5a;
+      backdrop-filter: blur(4px);
+    }
+
+    body.light-mode .tooltip {
+      background: rgba(255, 255, 255, 0.95);
+      color: #2c2c2c;
+      border-color: #e0e0e0;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: #16213e;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      border: 1px solid #3a3a5a;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    body.light-mode .modal {
+      background: #ffffff;
+      border-color: #e0e0e0;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #667eea;
+    }
+
+    .modal-subtitle {
+      font-size: 14px;
+      color: #a0a0a0;
+      margin-bottom: 20px;
+    }
+
+    body.light-mode .modal-subtitle {
+      color: #666;
+    }
+
+    .modal-content {
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #a0a0a0;
+    }
+
+    body.light-mode .modal-content {
+      color: #666;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-actions .btn {
+      margin-bottom: 0;
+    }
+
+    .confirmation-message {
+      display: none;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #0f3460;
+      color: #e0e0e0;
+      padding: 12px 16px;
+      border-radius: 4px;
+      border-left: 3px solid #667eea;
+      font-size: 12px;
+      z-index: 1500;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .confirmation-message.show {
+      display: block;
+    }
+
+    .confirmation-message.success {
+      background: #0f3460;
+      border-left-color: #4caf50;
+    }
+
+    .confirmation-message.error {
+      background: #3a2a2a;
+      border-left-color: #dc3545;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #3a3a5a;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Map Title & Subtitle */
+    .map-title {
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+      color: #667eea;
+      padding: 20px 20px 5px;
+      cursor: text;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    .map-title:hover, .map-title:focus {
+      border-color: #667eea;
+    }
+
+    body.light-mode .map-title {
+      color: #667eea;
+    }
+
+    .map-subtitle {
+      font-size: 14px;
+      text-align: center;
+      color: #a0a0a0;
+      padding: 0 20px 15px;
+      cursor: text;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      transition: border-color 0.2s;
+      outline: none;
+      min-height: 20px;
+    }
+
+    .map-subtitle:hover, .map-subtitle:focus {
+      border-color: #a0a0a0;
+    }
+
+    body.light-mode .map-subtitle {
+      color: #666;
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+      background: #0f3460;
+      border-top: 1px solid #3a3a5a;
+      padding: 12px 20px;
+      font-size: 12px;
+      color: #a0a0a0;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    body.light-mode .stats-bar {
+      background: #f0f0f0;
+      border-top-color: #e0e0e0;
+      color: #666;
+    }
+
+    .stats-progress {
+      flex: 1;
+    }
+
+    .stats-progress-bar {
+      height: 3px;
+      background: #3a3a5a;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    body.light-mode .stats-progress-bar {
+      background: #e0e0e0;
+    }
+
+    .stats-progress-fill {
+      height: 100%;
+      background: #667eea;
+      transition: width 0.3s ease;
+    }
+
+    .stats-text {
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .stats-breakdown {
+      display: flex;
+      gap: 15px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .stats-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stats-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Quick Fill Section */
+    .region-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .region-btn {
+      background: #0f3460;
+      color: #e0e0e0;
+      border: 1px solid #3a3a5a;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background-color 0.2s, border-color 0.2s;
+      font-weight: 500;
+    }
+
+    body.light-mode .region-btn {
+      background: #e8e8e8;
+      border-color: #d0d0d0;
+      color: #2c2c2c;
+    }
+
+    .region-btn:hover {
+      background: #667eea;
+      border-color: #667eea;
+      color: #fff;
+    }
+
+    body.light-mode .region-btn:hover {
+      background: #667eea;
+      border-color: #667eea;
+      color: #fff;
+    }
+
+    .quick-fill-divider {
+      border-top: 1px solid #3a3a5a;
+      margin: 8px 0;
+    }
+
+    body.light-mode .quick-fill-divider {
+      border-top-color: #e0e0e0;
+    }
+
+    .region-select-group {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .region-select {
+      flex: 1;
+      background: #1a1a2e;
+      border: 1px solid #3a3a5a;
+      color: #e0e0e0;
+      padding: 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+
+    body.light-mode .region-select {
+      background: #fff;
+      border-color: #e0e0e0;
+      color: #2c2c2c;
+    }
+
+    .region-select-btn {
+      background: #667eea;
+      color: #fff;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 3px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+
+    .region-select-btn:hover {
+      background: #7c8ff5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Cakemapper</div>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+      </div>
+
+      <!-- Instructions -->
+      <div class="section">
+        <div class="section-title">How to Use</div>
+        <div class="section-content">
+          <div class="instructions-text">
+            <strong>1.</strong> Pick a color from the palette<br>
+            <strong>2.</strong> Click a state to color it<br>
+            <strong>3.</strong> Add legend entries<br>
+            <strong>4.</strong> Export or save your map
+          </div>
+        </div>
+      </div>
+
+      <!-- Color Palette -->
+      <div class="section">
+        <div class="section-title">Color Palette</div>
+        <div class="section-content">
+          <div class="color-grid" id="colorGrid"></div>
+          <div class="color-inputs">
+            <input type="color" id="colorPicker" class="color-picker-btn" value="#667eea">
+            <input type="text" id="hexInput" class="hex-input" placeholder="#667eea" maxlength="7">
+          </div>
+          <button class="btn secondary" id="addCustomColor">+ Add Custom</button>
+        </div>
+      </div>
+
+      <!-- Legend Builder -->
+      <div class="section">
+        <div class="section-title">Legend</div>
+        <div class="section-content">
+          <div id="legendEntries"></div>
+          <button class="btn secondary" id="addLegendEntry">+ Add Entry</button>
+        </div>
+      </div>
+
+      <!-- Quick Fill -->
+      <div class="section">
+        <div class="section-title">Quick Fill</div>
+        <div class="section-content">
+          <button class="btn secondary" id="selectAllBtn" style="margin-bottom: 8px;">✓ Select All</button>
+          <div class="region-buttons" id="regionButtons">
+            <button class="region-btn" data-region="northeast">Northeast</button>
+            <button class="region-btn" data-region="midwest">Midwest</button>
+            <button class="region-btn" data-region="south">South</button>
+            <button class="region-btn" data-region="west">West</button>
+          </div>
+          <div class="quick-fill-divider"></div>
+          <div class="region-select-group">
+            <select class="region-select" id="clearRegionSelect">
+              <option value="">Clear Region...</option>
+              <option value="northeast">Northeast</option>
+              <option value="midwest">Midwest</option>
+              <option value="south">South</option>
+              <option value="west">West</option>
+            </select>
+            <button class="region-select-btn" id="clearRegionBtn">Clear</button>
+          </div>
+          <button class="btn secondary" id="invertSelectionBtn">⟷ Invert</button>
+        </div>
+      </div>
+
+      <!-- Import Data (PRO) -->
+      <div class="section">
+        <div class="section-title">Import</div>
+        <div class="section-content">
+          <button class="btn btn-pro" id="importDataBtn">
+            Import Data
+            <span class="pro-badge">PRO</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="section">
+        <div class="section-title">Actions</div>
+        <div class="section-content">
+          <button class="btn" id="undoBtn">↶ Undo</button>
+          <button class="btn danger" id="clearAllBtn">🗑 Clear All</button>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="section">
+        <div class="section-title">Export</div>
+        <div class="section-content">
+          <button class="btn" id="exportPNGBtn">⬇ Export PNG</button>
+          <button class="btn" id="exportGeoJSONBtn">⬇ Export GeoJSON</button>
+          <button class="btn secondary" id="copyShareLinkBtn">🔗 Copy Share Link</button>
+          <button class="btn secondary" id="saveConfigBtn">💾 Save Config</button>
+          <button class="btn secondary" id="loadConfigBtn">📂 Load Config</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main map area -->
+    <div class="main">
+      <div class="map-container" id="mapContainer">
+        <div class="map-title" id="mapTitle" contenteditable="true">My US Map</div>
+        <div class="map-subtitle" id="mapSubtitle" contenteditable="true" data-placeholder="Click to add subtitle"></div>
+        <svg id="mapSVG" viewBox="0 0 960 600" style="width: 100%; height: 100%;">
+          <g id="statesGroup"></g>
+        </svg>
+        <div class="legend-group" id="legendDisplay" style="display: none;"></div>
+        <div class="stats-bar" id="statsBar">
+          <div class="stats-text" id="statsText">0 of 50 states colored</div>
+          <div class="stats-progress">
+            <div class="stats-progress-bar">
+              <div class="stats-progress-fill" id="statsProgressFill" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="stats-breakdown" id="statsBreakdown"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tooltip -->
+  <div class="tooltip" id="tooltip" style="display: none;"></div>
+
+  <!-- Modals -->
+  <div class="modal-overlay" id="upgradeModal">
+    <div class="modal">
+      <div class="modal-title">Upgrade to Cakemapper Pro</div>
+      <div class="modal-subtitle">Unlock advanced features</div>
+      <div class="modal-content">
+        <p>The import feature allows you to load state data from CSV files and automatically color states based on categories or values.</p>
+        <p style="margin-top: 10px;"><strong>Coming soon!</strong> For now, you can manually color states using the palette.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="document.getElementById('upgradeModal').classList.remove('active')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="clearConfirmModal">
+    <div class="modal">
+      <div class="modal-title">Clear All States?</div>
+      <div class="modal-content">
+        This will remove all colors and reset the map. This action cannot be undone.
+      </div>
+      <div class="modal-actions">
+        <button class="btn danger" id="clearConfirmBtn">Clear All</button>
+        <button class="btn secondary" onclick="document.getElementById('clearConfirmModal').classList.remove('active')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="confirmation-message" id="confirmationMessage"></div>
+
+  <!-- External Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <script>
+    // ============================================================================
+    // APP STATE & MANAGEMENT
+    // ============================================================================
+
+    const appState = {
+      selectedColor: '#667eea',
+      stateColors: {},
+      stateLabels: {},
+      legendEntries: [],
+      mapTitle: 'My US Map',
+      mapSubtitle: '',
+      history: [],
+      darkMode: true,
+      proUnlocked: false,
+      topologyData: null,
+      urlUpdateTimeout: null,
+      stateAbbreviations: {
+        'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
+        'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
+        'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
+        'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS',
+        'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+        'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
+        'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
+        'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+        'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
+        'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+        'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT',
+        'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV',
+        'Wisconsin': 'WI', 'Wyoming': 'WY', 'District of Columbia': 'DC'
+      },
+      regions: {
+        northeast: ['Connecticut', 'Maine', 'Massachusetts', 'New Hampshire', 'Rhode Island', 'Vermont', 'New Jersey', 'New York', 'Pennsylvania'],
+        midwest: ['Illinois', 'Indiana', 'Iowa', 'Kansas', 'Michigan', 'Minnesota', 'Missouri', 'Nebraska', 'North Dakota', 'Ohio', 'South Dakota', 'Wisconsin'],
+        south: ['Alabama', 'Arkansas', 'Delaware', 'Florida', 'Georgia', 'Kentucky', 'Louisiana', 'Maryland', 'Mississippi', 'North Carolina', 'Oklahoma', 'South Carolina', 'Tennessee', 'Texas', 'Virginia', 'West Virginia', 'District of Columbia'],
+        west: ['Alaska', 'Arizona', 'California', 'Colorado', 'Hawaii', 'Idaho', 'Montana', 'Nevada', 'New Mexico', 'Oregon', 'Utah', 'Washington', 'Wyoming']
+      },
+      presetColors: [
+        '#667eea', '#ff6b6b', '#51cf66', '#ffd93d',
+        '#6bcf7f', '#4ecdc4', '#ff8c42', '#a29bfe',
+        '#fd79a8', '#fab1a0', '#74b9ff', '#81ecec'
+      ]
+    };
+
+    // ============================================================================
+    // INITIALIZATION
+    // ============================================================================
+
+    async function init() {
+      loadThemePreference();
+      initializeColorPalette();
+      initializeTitleSubtitle();
+      await loadUSMap();
+      loadStateFromURL();
+      attachEventListeners();
+      updateStatsBar();
+    }
+
+    async function loadUSMap() {
+      try {
+        showMessage('Loading map...', 'info');
+        const response = await fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-albers-10m.json');
+        const topology = await response.json();
+        appState.topologyData = topology;
+
+        // Convert TopoJSON to SVG paths and render
+        renderStatesFromTopology(topology);
+        showMessage('Map loaded successfully', 'success');
+      } catch (error) {
+        console.error('Failed to load US map:', error);
+        showMessage('Failed to load map data', 'error');
+      }
+    }
+
+    function renderStatesFromTopology(topology) {
+      const statesGroup = document.getElementById('statesGroup');
+      statesGroup.innerHTML = '';
+
+      // Get state features from topology
+      const states = topojson.feature(topology, topology.objects.states).features;
+      const stateMesh = topojson.mesh(topology, topology.objects.states, (a, b) => a !== b);
+
+      // Create path generator (Albers projection is already applied in the TopoJSON)
+      const pathGenerator = d => {
+        let pathData = '';
+        if (d.type === 'Polygon') {
+          d.coordinates.forEach((ring, i) => {
+            pathData += (i > 0 ? 'M' : 'M') + ring.map(p => p.join(',')).join('L') + 'Z';
+          });
+        } else if (d.type === 'MultiPolygon') {
+          d.coordinates.forEach(polygon => {
+            polygon.forEach((ring, i) => {
+              pathData += 'M' + ring.map(p => p.join(',')).join('L') + 'Z';
+            });
+          });
+        }
+        return pathData;
+      };
+
+      // Render each state
+      states.forEach((feature, index) => {
+        const stateName = feature.properties.name;
+        const geometry = feature.geometry;
+        const pathData = pathGenerator(geometry);
+
+        // Create path element
+        const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        pathEl.setAttribute('d', pathData);
+        pathEl.setAttribute('class', 'state-path');
+        pathEl.setAttribute('data-state', stateName);
+        pathEl.setAttribute('data-index', index);
+
+        // Apply stored color if exists
+        if (appState.stateColors[stateName]) {
+          pathEl.setAttribute('fill', appState.stateColors[stateName]);
+        }
+
+        // Event listeners
+        pathEl.addEventListener('click', (e) => onStateClick(e, stateName));
+        pathEl.addEventListener('mouseenter', (e) => showTooltip(e, stateName));
+        pathEl.addEventListener('mousemove', (e) => moveTooltip(e));
+        pathEl.addEventListener('mouseleave', hideTooltip);
+
+        statesGroup.appendChild(pathEl);
+
+        // Add state label (abbreviation)
+        const bbox = pathEl.getBBox();
+        const labelX = bbox.x + bbox.width / 2;
+        const labelY = bbox.y + bbox.height / 2;
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('class', 'state-label');
+        label.setAttribute('x', labelX);
+        label.setAttribute('y', labelY);
+        label.setAttribute('data-state', stateName);
+        label.textContent = appState.stateAbbreviations[stateName] || stateName.substring(0, 2).toUpperCase();
+
+        statesGroup.appendChild(label);
+      });
+    }
+
+    // ============================================================================
+    // TITLE & SUBTITLE MANAGEMENT
+    // ============================================================================
+
+    function initializeTitleSubtitle() {
+      const titleEl = document.getElementById('mapTitle');
+      const subtitleEl = document.getElementById('mapSubtitle');
+
+      titleEl.textContent = appState.mapTitle;
+      subtitleEl.textContent = appState.mapSubtitle;
+
+      titleEl.addEventListener('blur', () => {
+        appState.mapTitle = titleEl.textContent || 'My US Map';
+        updateURL();
+      });
+
+      subtitleEl.addEventListener('blur', () => {
+        appState.mapSubtitle = subtitleEl.textContent || '';
+        updateURL();
+      });
+    }
+
+    // ============================================================================
+    // STATS BAR MANAGEMENT
+    // ============================================================================
+
+    function updateStatsBar() {
+      const colored = Object.keys(appState.stateColors).length;
+      const total = 50;
+      const percentage = (colored / total) * 100;
+
+      document.getElementById('statsText').textContent = `${colored} of ${total} states colored`;
+      document.getElementById('statsProgressFill').style.width = percentage + '%';
+
+      // Build breakdown by legend category
+      const breakdown = {};
+      appState.legendEntries.forEach(entry => {
+        breakdown[entry.label] = { color: entry.color, count: 0 };
+      });
+
+      Object.entries(appState.stateColors).forEach(([state, color]) => {
+        const entry = appState.legendEntries.find(le => le.color === color);
+        if (entry) {
+          breakdown[entry.label].count++;
+        }
+      });
+
+      const breakdownEl = document.getElementById('statsBreakdown');
+      breakdownEl.innerHTML = '';
+      Object.entries(breakdown).forEach(([label, data]) => {
+        if (data.count > 0) {
+          const itemEl = document.createElement('div');
+          itemEl.className = 'stats-item';
+          itemEl.innerHTML = `<div class="stats-color" style="background-color: ${data.color};"></div><span>${label}: ${data.count}</span>`;
+          breakdownEl.appendChild(itemEl);
+        }
+      });
+    }
+
+    // ============================================================================
+    // COLOR MANAGEMENT
+    // ============================================================================
+
+    function initializeColorPalette() {
+      const grid = document.getElementById('colorGrid');
+      grid.innerHTML = '';
+
+      appState.presetColors.forEach(color => {
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        if (color === appState.selectedColor) {
+          swatch.classList.add('active');
+        }
+        swatch.style.backgroundColor = color;
+        swatch.addEventListener('click', () => selectColor(color));
+        grid.appendChild(swatch);
+      });
+
+      updateHexInput();
+    }
+
+    function selectColor(color) {
+      appState.selectedColor = color;
+      document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      updateHexInput();
+    }
+
+    function updateHexInput() {
+      document.getElementById('hexInput').value = appState.selectedColor;
+      document.getElementById('colorPicker').value = appState.selectedColor;
+    }
+
+    // ============================================================================
+    // STATE INTERACTION
+    // ============================================================================
+
+    function onStateClick(e, stateName) {
+      e.stopPropagation();
+      saveHistory();
+
+      const pathEl = e.target;
+      if (appState.stateColors[stateName]) {
+        // Toggle off
+        delete appState.stateColors[stateName];
+        pathEl.removeAttribute('fill');
+      } else {
+        // Toggle on
+        appState.stateColors[stateName] = appState.selectedColor;
+        pathEl.setAttribute('fill', appState.selectedColor);
+      }
+
+      updateLegendDisplay();
+      updateStatsBar();
+      updateURL();
+    }
+
+    function showTooltip(e, stateName) {
+      const tooltip = document.getElementById('tooltip');
+      const abbr = appState.stateAbbreviations[stateName] || '';
+      let legendLabel = '';
+
+      // Find legend label for this state's color
+      const stateColor = appState.stateColors[stateName];
+      if (stateColor) {
+        const entry = appState.legendEntries.find(le => le.color === stateColor);
+        if (entry) {
+          legendLabel = ` • ${entry.label}`;
+        }
+      }
+
+      tooltip.textContent = `${stateName} (${abbr})${legendLabel}`;
+      tooltip.style.display = 'block';
+      moveTooltip(e);
+    }
+
+    function moveTooltip(e) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.left = (e.pageX + 10) + 'px';
+      tooltip.style.top = (e.pageY + 10) + 'px';
+    }
+
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+
+    // ============================================================================
+    // LEGEND MANAGEMENT
+    // ============================================================================
+
+    function addLegendEntry() {
+      appState.legendEntries.push({
+        color: appState.selectedColor,
+        label: 'New Entry'
+      });
+      updateLegendBuilder();
+      updateLegendDisplay();
+    }
+
+    function updateLegendEntry(index, field, value) {
+      if (appState.legendEntries[index]) {
+        appState.legendEntries[index][field] = value;
+        updateLegendDisplay();
+      }
+    }
+
+    function removeLegendEntry(index) {
+      appState.legendEntries.splice(index, 1);
+      updateLegendBuilder();
+      updateLegendDisplay();
+    }
+
+    function updateLegendBuilder() {
+      const container = document.getElementById('legendEntries');
+      container.innerHTML = '';
+
+      appState.legendEntries.forEach((entry, index) => {
+        const entryEl = document.createElement('div');
+        entryEl.className = 'legend-entry';
+
+        const colorEl = document.createElement('div');
+        colorEl.className = 'legend-color';
+        colorEl.style.backgroundColor = entry.color;
+
+        const inputsEl = document.createElement('div');
+        inputsEl.className = 'legend-inputs';
+
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.className = 'legend-label-input';
+        labelInput.value = entry.label;
+        labelInput.placeholder = 'Label';
+        labelInput.addEventListener('change', (e) => updateLegendEntry(index, 'label', e.target.value));
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'legend-remove';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => removeLegendEntry(index));
+
+        inputsEl.appendChild(labelInput);
+        entryEl.appendChild(colorEl);
+        entryEl.appendChild(inputsEl);
+        entryEl.appendChild(removeBtn);
+        container.appendChild(entryEl);
+      });
+    }
+
+    function updateLegendDisplay() {
+      const legendDisplay = document.getElementById('legendDisplay');
+      if (appState.legendEntries.length === 0) {
+        legendDisplay.style.display = 'none';
+        return;
+      }
+
+      legendDisplay.style.display = 'block';
+      legendDisplay.innerHTML = '<div class="legend-title">Legend</div>';
+
+      appState.legendEntries.forEach(entry => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'legend-item';
+
+        const colorEl = document.createElement('div');
+        colorEl.className = 'legend-item-color';
+        colorEl.style.backgroundColor = entry.color;
+
+        const labelEl = document.createElement('span');
+        labelEl.textContent = entry.label;
+
+        itemEl.appendChild(colorEl);
+        itemEl.appendChild(labelEl);
+        legendDisplay.appendChild(itemEl);
+      });
+    }
+
+    // ============================================================================
+    // QUICK FILL FUNCTIONS
+    // ============================================================================
+
+    function selectAll() {
+      saveHistory();
+      const all50States = Object.keys(appState.stateAbbreviations);
+      all50States.forEach(state => {
+        appState.stateColors[state] = appState.selectedColor;
+      });
+      renderMap();
+      updateLegendDisplay();
+      updateStatsBar();
+      updateURL();
+      showMessage('All states selected', 'success');
+    }
+
+    function colorRegion(region) {
+      saveHistory();
+      const states = appState.regions[region] || [];
+      states.forEach(state => {
+        appState.stateColors[state] = appState.selectedColor;
+      });
+      renderMap();
+      updateLegendDisplay();
+      updateStatsBar();
+      updateURL();
+      showMessage(`${region.charAt(0).toUpperCase() + region.slice(1)} region colored`, 'success');
+    }
+
+    function clearRegion(region) {
+      saveHistory();
+      const states = appState.regions[region] || [];
+      states.forEach(state => {
+        delete appState.stateColors[state];
+      });
+      renderMap();
+      updateLegendDisplay();
+      updateStatsBar();
+      updateURL();
+      showMessage(`${region.charAt(0).toUpperCase() + region.slice(1)} region cleared`, 'success');
+    }
+
+    function invertSelection() {
+      saveHistory();
+      const all50States = Object.keys(appState.stateAbbreviations);
+      const newColors = {};
+      all50States.forEach(state => {
+        if (appState.stateColors[state]) {
+          // Keep colored states colored
+          newColors[state] = appState.stateColors[state];
+        } else {
+          // Color uncolored states
+          newColors[state] = appState.selectedColor;
+        }
+      });
+      appState.stateColors = newColors;
+      renderMap();
+      updateLegendDisplay();
+      updateStatsBar();
+      updateURL();
+      showMessage('Selection inverted', 'success');
+    }
+
+    // ============================================================================
+    // HISTORY & UNDO
+    // ============================================================================
+
+    function saveHistory() {
+      appState.history.push(JSON.stringify(appState.stateColors));
+      if (appState.history.length > 50) {
+        appState.history.shift();
+      }
+    }
+
+    function undo() {
+      if (appState.history.length > 0) {
+        appState.stateColors = JSON.parse(appState.history.pop());
+        renderMap();
+        updateLegendDisplay();
+        updateStatsBar();
+        updateURL();
+        showMessage('Undone', 'success');
+      }
+    }
+
+    // ============================================================================
+    // URL STATE MANAGEMENT
+    // ============================================================================
+
+    function encodeStateToURL() {
+      const state = {
+        colors: appState.stateColors,
+        legend: appState.legendEntries,
+        title: appState.mapTitle,
+        subtitle: appState.mapSubtitle
+      };
+      return btoa(JSON.stringify(state));
+    }
+
+    function decodeStateFromURL(encoded) {
+      try {
+        const state = JSON.parse(atob(encoded));
+        return state;
+      } catch (e) {
+        console.error('Failed to decode URL state:', e);
+        return null;
+      }
+    }
+
+    function updateURL() {
+      clearTimeout(appState.urlUpdateTimeout);
+      appState.urlUpdateTimeout = setTimeout(() => {
+        const encoded = encodeStateToURL();
+        window.history.replaceState(null, '', `#${encoded}`);
+      }, 1000);
+    }
+
+    function loadStateFromURL() {
+      const hash = window.location.hash.slice(1);
+      if (hash) {
+        const state = decodeStateFromURL(hash);
+        if (state) {
+          appState.stateColors = state.colors || {};
+          appState.legendEntries = state.legend || [];
+          appState.mapTitle = state.title || 'My US Map';
+          appState.mapSubtitle = state.subtitle || '';
+
+          document.getElementById('mapTitle').textContent = appState.mapTitle;
+          document.getElementById('mapSubtitle').textContent = appState.mapSubtitle;
+
+          renderMap();
+          updateLegendBuilder();
+          updateLegendDisplay();
+          updateStatsBar();
+          showMessage('Map loaded from URL', 'success');
+        }
+      }
+    }
+
+    function copyShareLink() {
+      const encoded = encodeStateToURL();
+      const shareURL = `${window.location.origin}${window.location.pathname}#${encoded}`;
+      navigator.clipboard.writeText(shareURL).then(() => {
+        showMessage('Link copied to clipboard!', 'success');
+      }).catch(() => {
+        showMessage('Failed to copy link', 'error');
+      });
+    }
+
+    // ============================================================================
+    // EXPORT & IMPORT
+    // ============================================================================
+
+    function exportPNG() {
+      showMessage('Exporting PNG...', 'info');
+      const mapContainer = document.getElementById('mapContainer');
+      html2canvas(mapContainer, { backgroundColor: null }).then(canvas => {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = 'cakemapper.png';
+        link.click();
+        showMessage('PNG exported successfully', 'success');
+      }).catch(err => {
+        console.error('Export failed:', err);
+        showMessage('Export failed', 'error');
+      });
+    }
+
+    function exportGeoJSON() {
+      const features = [];
+      Object.entries(appState.stateColors).forEach(([stateName, color]) => {
+        const stateIndex = Object.keys(appState.stateAbbreviations).indexOf(stateName);
+        features.push({
+          type: 'Feature',
+          properties: {
+            name: stateName,
+            abbreviation: appState.stateAbbreviations[stateName],
+            color: color,
+            legendLabel: (appState.legendEntries.find(le => le.color === color) || {}).label || ''
+          },
+          geometry: {} // Simplified for this version
+        });
+      });
+
+      const geoJSON = {
+        type: 'FeatureCollection',
+        features: features
+      };
+
+      const dataStr = JSON.stringify(geoJSON, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(dataBlob);
+      link.download = 'cakemapper.geojson';
+      link.click();
+      showMessage('GeoJSON exported successfully', 'success');
+    }
+
+    function saveConfig() {
+      const config = {
+        stateColors: appState.stateColors,
+        legendEntries: appState.legendEntries,
+        mapTitle: appState.mapTitle,
+        mapSubtitle: appState.mapSubtitle,
+        timestamp: new Date().toISOString()
+      };
+      const dataStr = JSON.stringify(config, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(dataBlob);
+      link.download = `cakemapper-${Date.now()}.json`;
+      link.click();
+      showMessage('Config saved', 'success');
+    }
+
+    function loadConfig() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const config = JSON.parse(event.target.result);
+            appState.stateColors = config.stateColors || {};
+            appState.legendEntries = config.legendEntries || [];
+            appState.mapTitle = config.mapTitle || 'My US Map';
+            appState.mapSubtitle = config.mapSubtitle || '';
+
+            document.getElementById('mapTitle').textContent = appState.mapTitle;
+            document.getElementById('mapSubtitle').textContent = appState.mapSubtitle;
+
+            renderMap();
+            updateLegendBuilder();
+            updateLegendDisplay();
+            updateStatsBar();
+            updateURL();
+            showMessage('Config loaded successfully', 'success');
+          } catch (err) {
+            showMessage('Failed to load config', 'error');
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    }
+
+    // ============================================================================
+    // THEME MANAGEMENT
+    // ============================================================================
+
+    function loadThemePreference() {
+      const stored = localStorage.getItem('cakemapper-theme');
+      if (stored === 'light') {
+        appState.darkMode = false;
+        document.body.classList.add('light-mode');
+        document.getElementById('themeToggle').textContent = '☀️';
+      }
+    }
+
+    function toggleTheme() {
+      appState.darkMode = !appState.darkMode;
+      document.body.classList.toggle('light-mode');
+      document.getElementById('themeToggle').textContent = appState.darkMode ? '🌙' : '☀️';
+      localStorage.setItem('cakemapper-theme', appState.darkMode ? 'dark' : 'light');
+    }
+
+    // ============================================================================
+    // UTILITIES
+    // ============================================================================
+
+    function renderMap() {
+      if (!appState.topologyData) return;
+      renderStatesFromTopology(appState.topologyData);
+    }
+
+    function clearAll() {
+      document.getElementById('clearConfirmModal').classList.add('active');
+    }
+
+    function confirmClearAll() {
+      saveHistory();
+      appState.stateColors = {};
+      renderMap();
+      updateLegendDisplay();
+      updateStatsBar();
+      updateURL();
+      document.getElementById('clearConfirmModal').classList.remove('active');
+      showMessage('Map cleared', 'success');
+    }
+
+    function showMessage(text, type = 'info') {
+      const msg = document.getElementById('confirmationMessage');
+      msg.textContent = text;
+      msg.className = `confirmation-message show ${type}`;
+      setTimeout(() => {
+        msg.classList.remove('show');
+      }, 3000);
+    }
+
+    // ============================================================================
+    // EVENT LISTENERS
+    // ============================================================================
+
+    function attachEventListeners() {
+      // Color palette
+      document.getElementById('colorPicker').addEventListener('change', (e) => {
+        appState.selectedColor = e.target.value;
+        updateHexInput();
+        initializeColorPalette();
+      });
+
+      document.getElementById('hexInput').addEventListener('change', (e) => {
+        const hex = e.target.value;
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+          appState.selectedColor = hex;
+          document.getElementById('colorPicker').value = hex;
+          initializeColorPalette();
+        }
+      });
+
+      document.getElementById('addCustomColor').addEventListener('click', () => {
+        if (!appState.presetColors.includes(appState.selectedColor)) {
+          appState.presetColors.push(appState.selectedColor);
+          initializeColorPalette();
+          showMessage('Color added to palette', 'success');
+        }
+      });
+
+      // Legend
+      document.getElementById('addLegendEntry').addEventListener('click', addLegendEntry);
+
+      // Quick Fill
+      document.getElementById('selectAllBtn').addEventListener('click', selectAll);
+      document.getElementById('invertSelectionBtn').addEventListener('click', invertSelection);
+      document.getElementById('clearRegionBtn').addEventListener('click', () => {
+        const region = document.getElementById('clearRegionSelect').value;
+        if (region) {
+          clearRegion(region);
+          document.getElementById('clearRegionSelect').value = '';
+        }
+      });
+      document.querySelectorAll('.region-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const region = e.target.getAttribute('data-region');
+          colorRegion(region);
+        });
+      });
+
+      // Actions
+      document.getElementById('undoBtn').addEventListener('click', undo);
+      document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+      document.getElementById('clearConfirmBtn').addEventListener('click', confirmClearAll);
+
+      // Export
+      document.getElementById('exportPNGBtn').addEventListener('click', exportPNG);
+      document.getElementById('exportGeoJSONBtn').addEventListener('click', exportGeoJSON);
+      document.getElementById('copyShareLinkBtn').addEventListener('click', copyShareLink);
+      document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+      document.getElementById('loadConfigBtn').addEventListener('click', loadConfig);
+
+      // Import (PRO)
+      document.getElementById('importDataBtn').addEventListener('click', () => {
+        document.getElementById('upgradeModal').classList.add('active');
+      });
+
+      // Theme
+      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+    }
+
+    // Initialize app
+    init();
+  </script>
+</body>
+</html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
