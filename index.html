@@ -803,6 +803,17 @@
         </div>
       </div>
 
+      <!-- Display Options -->
+      <div class="section">
+        <div class="section-title">Display</div>
+        <div class="section-content">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+            <input type="checkbox" id="toggleLabels" checked style="accent-color: #667eea; cursor: pointer;">
+            Show state labels
+          </label>
+        </div>
+      </div>
+
       <!-- Quick Fill -->
       <div class="section">
         <div class="section-title">Quick Fill</div>
@@ -935,6 +946,7 @@
       mapSubtitle: '',
       history: [],
       darkMode: true,
+      showLabels: true,
       proUnlocked: false,
       topologyData: null,
       urlUpdateTimeout: null,
@@ -1053,9 +1065,9 @@
         pathEl.setAttribute('data-state', stateName);
         pathEl.setAttribute('data-index', index);
 
-        // Apply stored color if exists
+        // Apply stored color if exists (use style.fill to override CSS)
         if (appState.stateColors[stateName]) {
-          pathEl.setAttribute('fill', appState.stateColors[stateName]);
+          pathEl.style.fill = appState.stateColors[stateName];
         }
 
         // Event listeners
@@ -1066,19 +1078,41 @@
 
         statesGroup.appendChild(pathEl);
 
-        // Add state label (abbreviation)
+        // Add state label (abbreviation) with manual offsets for tricky states
         const bbox = pathEl.getBBox();
-        const labelX = bbox.x + bbox.width / 2;
-        const labelY = bbox.y + bbox.height / 2;
+        let labelX = bbox.x + bbox.width / 2;
+        let labelY = bbox.y + bbox.height / 2;
 
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('class', 'state-label');
-        label.setAttribute('x', labelX);
-        label.setAttribute('y', labelY);
-        label.setAttribute('data-state', stateName);
-        label.textContent = appState.stateAbbreviations[stateName] || stateName.substring(0, 2).toUpperCase();
+        // Manual label offsets for states where bbox center is misleading
+        const labelOffsets = {
+          'Florida': { dx: 30, dy: 28 },
+          'Michigan': { dx: 20, dy: 20 },
+          'Louisiana': { dx: 8, dy: -8 },
+          'Hawaii': { dx: 20, dy: 5 },
+          'Alaska': { dx: 0, dy: 10 },
+          'Idaho': { dx: 0, dy: 10 },
+          'California': { dx: 0, dy: 20 },
+          'New York': { dx: 10, dy: 5 },
+          'Virginia': { dx: 10, dy: 2 },
+          'Maryland': { dx: -5, dy: -5 }
+        };
 
-        statesGroup.appendChild(label);
+        if (labelOffsets[stateName]) {
+          labelX += labelOffsets[stateName].dx;
+          labelY += labelOffsets[stateName].dy;
+        }
+
+        const abbr = appState.stateAbbreviations[stateName];
+        if (abbr) {
+          const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          label.setAttribute('class', 'state-label');
+          label.setAttribute('x', labelX);
+          label.setAttribute('y', labelY);
+          label.setAttribute('data-state', stateName);
+          label.textContent = abbr;
+          if (!appState.showLabels) label.style.display = 'none';
+          statesGroup.appendChild(label);
+        }
       });
     }
 
@@ -1194,15 +1228,15 @@
       e.stopPropagation();
       saveHistory();
 
-      const pathEl = e.target;
+      const pathEl = e.target.closest('.state-path') || e.target;
       if (appState.stateColors[stateName]) {
         // Toggle off
         delete appState.stateColors[stateName];
-        pathEl.removeAttribute('fill');
+        pathEl.style.fill = '';
       } else {
         // Toggle on
         appState.stateColors[stateName] = appState.selectedColor;
-        pathEl.setAttribute('fill', appState.selectedColor);
+        pathEl.style.fill = appState.selectedColor;
       }
 
       updateLegendDisplay();
@@ -1706,6 +1740,14 @@
 
       // Theme
       document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+      // Labels toggle
+      document.getElementById('toggleLabels').addEventListener('change', (e) => {
+        appState.showLabels = e.target.checked;
+        document.querySelectorAll('.state-label').forEach(label => {
+          label.style.display = appState.showLabels ? '' : 'none';
+        });
+      });
     }
 
     // Initialize app
