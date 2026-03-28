@@ -359,8 +359,13 @@
     }
 
     .state-path:hover {
-      stroke-width: 1.5;
-      stroke: #667eea;
+      stroke-width: 2;
+      stroke: #ffffff;
+      filter: brightness(1.15);
+    }
+
+    body.light-mode .state-path:hover {
+      stroke: #333333;
     }
 
     .state-label {
@@ -600,7 +605,13 @@
       min-height: 20px;
     }
 
-    .map-subtitle:empty::before {
+    .map-subtitle:empty {
+      min-height: 0;
+      padding: 0;
+      margin: 0;
+    }
+
+    .map-subtitle:focus:empty::before {
       content: attr(data-placeholder);
       opacity: 0.35;
       pointer-events: none;
@@ -1102,8 +1113,13 @@
         'California': { dx: 0, dy: 20 },
         'New York': { dx: 10, dy: 5 },
         'Virginia': { dx: 10, dy: 2 },
-        'Maryland': { dx: 15, dy: -8 },
-        'New Jersey': { dx: 5, dy: 5 },
+        'Maryland': { dx: 30, dy: -12 },
+        'Delaware': { dx: 18, dy: 0 },
+        'District of Columbia': { hide: true },
+        'New Jersey': { dx: 12, dy: 5 },
+        'Connecticut': { dx: 8, dy: 5 },
+        'Rhode Island': { dx: 10, dy: 5 },
+        'Massachusetts': { dx: 15, dy: -2 },
         'Minnesota': { dx: 0, dy: 10 },
         'Kentucky': { dx: 10, dy: 0 }
       };
@@ -1138,11 +1154,16 @@
         const bbox = pathEl.getBBox();
         let labelX = bbox.x + bbox.width / 2;
         let labelY = bbox.y + bbox.height / 2;
-        if (labelOffsets[stateName]) {
-          labelX += labelOffsets[stateName].dx;
-          labelY += labelOffsets[stateName].dy;
+        const offset = labelOffsets[stateName];
+        if (offset && offset.hide) {
+          // Skip label for this state (e.g. DC — too small)
+        } else {
+          if (offset) {
+            labelX += offset.dx;
+            labelY += offset.dy;
+          }
+          labelData.push({ stateName, labelX, labelY });
         }
-        labelData.push({ stateName, labelX, labelY });
       });
 
       // Pass 2: Render all labels on top of all paths
@@ -1156,9 +1177,34 @@
           label.setAttribute('data-state', stateName);
           label.textContent = abbr;
           if (!appState.showLabels) label.style.display = 'none';
+          // Auto-contrast: white labels on colored states
+          if (appState.stateColors[stateName]) {
+            label.style.fill = getLabelColor(appState.stateColors[stateName]);
+          }
           statesGroup.appendChild(label);
         }
       });
+    }
+
+    // Returns white or dark text depending on background color brightness
+    function getLabelColor(hexColor) {
+      const hex = hexColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      return luminance > 0.55 ? '#1a1a2e' : '#ffffff';
+    }
+
+    // Update label color for a specific state after coloring/clearing
+    function updateLabelContrast(stateName) {
+      const label = document.querySelector(`.state-label[data-state="${stateName}"]`);
+      if (!label) return;
+      if (appState.stateColors[stateName]) {
+        label.style.fill = getLabelColor(appState.stateColors[stateName]);
+      } else {
+        label.style.fill = '';
+      }
     }
 
     // ============================================================================
@@ -1189,10 +1235,10 @@
 
     function updateStatsBar() {
       const colored = Object.keys(appState.stateColors).length;
-      const total = Object.keys(appState.stateAbbreviations).length; // 51 (50 states + DC)
-      const percentage = (colored / total) * 100;
+      const total = 50;
+      const percentage = Math.min((colored / total) * 100, 100);
 
-      document.getElementById('statsText').textContent = `${colored} of ${total} states + DC colored`;
+      document.getElementById('statsText').textContent = `${colored} of ${total} states colored`;
       document.getElementById('statsProgressFill').style.width = percentage + '%';
 
       // Build breakdown by legend category
@@ -1278,6 +1324,7 @@
       appState.stateColors[stateName] = appState.selectedColor;
       pathEl.style.fill = appState.selectedColor;
 
+      updateLabelContrast(stateName);
       updateLegendDisplay();
       updateStatsBar();
       updateURL();
@@ -1292,6 +1339,7 @@
       delete appState.stateColors[stateName];
       pathEl.style.fill = '';
 
+      updateLabelContrast(stateName);
       updateLegendDisplay();
       updateStatsBar();
       updateURL();
