@@ -857,7 +857,7 @@
           </label>
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; margin-bottom: 6px;">
             <input type="checkbox" id="toggleBasemap" checked style="accent-color: #667eea; cursor: pointer;">
-            Show basemap
+            Show ocean
           </label>
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; margin-bottom: 6px;">
             <input type="checkbox" id="toggleNorthArrow" checked style="accent-color: #667eea; cursor: pointer;">
@@ -992,9 +992,6 @@
           <!-- Basemap: ocean background -->
           <rect id="oceanBg" x="-20" y="-30" width="1010" height="710" fill="#1a3a5c" opacity="0.15"/>
 
-          <!-- Basemap: Canada & Mexico outlines (loaded dynamically from world-atlas) -->
-          <g id="basemapGroup" opacity="0.15" transform="translate(5, -20) scale(0.95)"></g>
-
           <g id="statesGroup" transform="translate(5, -20) scale(0.95)"></g>
 
           <!-- Puerto Rico (manually positioned near Hawaii inset) -->
@@ -1090,8 +1087,6 @@
   <div class="confirmation-message" id="confirmationMessage"></div>
 
   <!-- External Dependencies -->
-  <script src="https://d3js.org/d3-array.v3.min.js"></script>
-  <script src="https://d3js.org/d3-geo.v3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -1161,7 +1156,6 @@
       initializeColorPalette();
       initializeTitleSubtitle();
       await loadUSMap();
-      loadBasemap(); // load real Canada/Mexico basemap in background
       loadStateFromURL();
       attachEventListeners();
       updateStatsBar();
@@ -1180,46 +1174,6 @@
       } catch (error) {
         console.error('Failed to load US map:', error);
         showMessage('Failed to load map data', 'error');
-      }
-    }
-
-    async function loadBasemap() {
-      try {
-        if (typeof d3 === 'undefined' || !d3.geoAlbers) {
-          console.warn('d3-geo not loaded, skipping basemap');
-          return;
-        }
-        const response = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
-        const world = await response.json();
-        const countries = topojson.feature(world, world.objects.countries).features;
-
-        // Canada = ISO 124, Mexico = ISO 484
-        const canada = countries.find(f => +f.id === 124);
-        const mexico = countries.find(f => +f.id === 484);
-
-        // Projection matching the continental US portion of us-atlas@3 pre-projected data
-        // d3.geoAlbersUsa() internally uses d3.geoAlbers() with these defaults for lower-48
-        const projection = d3.geoAlbers()
-          .scale(1070)
-          .translate([480, 250]);
-
-        const pathGen = d3.geoPath(projection);
-
-        const basemapGroup = document.getElementById('basemapGroup');
-        basemapGroup.innerHTML = '';
-
-        [canada, mexico].forEach(country => {
-          if (!country) return;
-          const pathData = pathGen(country);
-          if (!pathData) return;
-          const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          pathEl.setAttribute('d', pathData);
-          pathEl.setAttribute('fill', 'currentColor');
-          pathEl.setAttribute('opacity', '0.4');
-          basemapGroup.appendChild(pathEl);
-        });
-      } catch (error) {
-        console.error('Failed to load basemap:', error);
       }
     }
 
@@ -1268,30 +1222,61 @@
         return pathData;
       };
 
-      // Manual label offsets for states where bbox center is misleading
+      // Compute centroid of the largest polygon in a geometry
+      // Much more accurate than bounding box center for irregular states
+      function computeLabelPosition(geometry) {
+        let bestCentroid = null;
+        let bestArea = 0;
+
+        const getArea = (ring) => {
+          let area = 0;
+          for (let i = 0; i < ring.length - 1; i++) {
+            area += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+          }
+          return Math.abs(area / 2);
+        };
+
+        const getCentroid = (ring) => {
+          let cx = 0, cy = 0;
+          for (let i = 0; i < ring.length; i++) {
+            cx += ring[i][0];
+            cy += ring[i][1];
+          }
+          return { x: cx / ring.length, y: cy / ring.length };
+        };
+
+        const processPolygon = (rings) => {
+          const area = getArea(rings[0]);
+          if (area > bestArea) {
+            bestArea = area;
+            bestCentroid = getCentroid(rings[0]);
+          }
+        };
+
+        if (geometry.type === 'Polygon') {
+          processPolygon(geometry.coordinates);
+        } else if (geometry.type === 'MultiPolygon') {
+          geometry.coordinates.forEach(polygon => processPolygon(polygon));
+        }
+        return bestCentroid;
+      }
+
+      // Fine-tune offsets (applied AFTER centroid calculation, so much smaller adjustments needed)
       const labelOffsets = {
-        'Florida': { dx: 50, dy: 28 },
-        'Michigan': { dx: 25, dy: 25 },
-        'Louisiana': { dx: -8, dy: 8 },
-        'Hawaii': { dx: 20, dy: -5 },
-        'Alaska': { dx: 15, dy: 15 },
-        'Idaho': { dx: 3, dy: 15 },
-        'California': { dx: -5, dy: 25 },
-        'New York': { dx: 10, dy: 5 },
-        'Virginia': { dx: 10, dy: 2 },
-        'Maryland': { dx: 10, dy: -5 },
-        'Delaware': { dx: 30, dy: 5 },
+        'Florida': { dx: 18, dy: 10 },
+        'Louisiana': { dx: -5, dy: 5 },
+        'Hawaii': { dx: 0, dy: -5 },
+        'California': { dx: 0, dy: 10 },
         'District of Columbia': { hide: true },
-        'New Jersey': { dx: 12, dy: 5 },
-        'Connecticut': { dx: 10, dy: 6 },
-        'Rhode Island': { dx: 12, dy: 5 },
-        'Massachusetts': { dx: 18, dy: -2 },
-        'Minnesota': { dx: 5, dy: 15 },
-        'Kentucky': { dx: 10, dy: 0 },
-        'Oklahoma': { dx: 15, dy: 5 },
-        'West Virginia': { dx: 5, dy: 3 },
-        'Nevada': { dx: 3, dy: 10 },
-        'New Hampshire': { dx: 5, dy: 5 }
+        'Delaware': { dx: 18, dy: 0 },
+        'New Jersey': { dx: 8, dy: 0 },
+        'Connecticut': { dx: 8, dy: 3 },
+        'Rhode Island': { dx: 10, dy: 3 },
+        'Massachusetts': { dx: 12, dy: -3 },
+        'Maryland': { dx: 5, dy: -5 },
+        'New Hampshire': { dx: 3, dy: 3 },
+        'Virginia': { dx: 5, dy: 0 },
+        'Idaho': { dx: 0, dy: 8 }
       };
 
       // Pass 1: Render all state paths first
@@ -1323,10 +1308,11 @@
 
         statesGroup.appendChild(pathEl);
 
-        // Collect label info for pass 2
+        // Compute label position using geometric centroid (not bbox center)
+        const centroid = computeLabelPosition(geometry);
         const bbox = pathEl.getBBox();
-        let labelX = bbox.x + bbox.width / 2;
-        let labelY = bbox.y + bbox.height / 2;
+        let labelX = centroid ? centroid.x : bbox.x + bbox.width / 2;
+        let labelY = centroid ? centroid.y : bbox.y + bbox.height / 2;
         const offset = labelOffsets[stateName];
         if (offset && offset.hide) {
           // Skip label for this state (e.g. DC — too small)
@@ -2307,11 +2293,9 @@
         statesGroup.setAttribute('transform', '');
         statesGroup.innerHTML = '';
 
-        // Hide PR group, basemap, north arrow, scale bar in county mode
+        // Hide PR group, ocean, north arrow, scale bar in county mode
         const prGroup = document.getElementById('puertoRicoGroup');
         if (prGroup) prGroup.style.display = 'none';
-        const basemapGroup = document.getElementById('basemapGroup');
-        if (basemapGroup) basemapGroup.style.display = 'none';
         const oceanBg = document.getElementById('oceanBg');
         if (oceanBg) oceanBg.style.display = 'none';
         const northArrow = document.getElementById('northArrow');
@@ -2430,9 +2414,7 @@
       const prGroup = document.getElementById('puertoRicoGroup');
       if (prGroup) prGroup.style.display = '';
 
-      // Restore basemap, north arrow, scale bar
-      const basemapGroup = document.getElementById('basemapGroup');
-      if (basemapGroup) basemapGroup.style.display = appState.showBasemap ? '' : 'none';
+      // Restore ocean, north arrow, scale bar
       const oceanBg = document.getElementById('oceanBg');
       if (oceanBg) oceanBg.style.display = appState.showBasemap ? '' : 'none';
       const northArrow = document.getElementById('northArrow');
@@ -2550,11 +2532,10 @@
         });
       });
 
-      // Basemap toggle
+      // Ocean toggle
       document.getElementById('toggleBasemap').addEventListener('change', (e) => {
         appState.showBasemap = e.target.checked;
         document.getElementById('oceanBg').style.display = e.target.checked ? '' : 'none';
-        document.getElementById('basemapGroup').style.display = e.target.checked ? '' : 'none';
       });
 
       // North arrow toggle & position
