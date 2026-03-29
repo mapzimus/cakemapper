@@ -28,26 +28,27 @@ Mapparatus (formerly Cakemapper) is a client-side web app for creating colored U
 ### Rename Checklist
 - [ ] Rename GitHub repo: cakemapper → mapparatus
 - [ ] Update GitHub Pages URL or set up custom domain
-- [ ] Replace all "Cakemapper" / "cakemapper" references in index.html
-- [ ] Update Pro unlock codes (currently hardcoded: `CAKEPRO2026`, `cakemapper`)
-- [ ] Update HANDOVER.md, .claude/CLAUDE.md in repo
+- [x] Replace all "Cakemapper" / "cakemapper" references in index.html
+- [x] Update Pro unlock codes (now: `MAPPRO2026`, `mapparatus`)
+- [ ] Update HANDOVER.md in repo
+- [x] Update .claude/CLAUDE.md in repo
 - [x] Register mapparatus.org domain
 - [x] Set up max@mapparatus.org email (via Google Workspace)
 - [ ] Point domain to hosting (Vercel — see Phase 3)
 
-### Known Bugs to Fix
-- County tooltips show FIPS codes instead of county names (need FIPS-to-name lookup)
-- Remove Puerto Rico entirely (decision: out of scope for Mapparatus)
-- Small state labels (CT, RI, NJ, DE, MD) crowd in northeast at small viewports
-- Mobile/touch not optimized (sidebar takes full width, no responsive layout)
-- DC is non-colorable (by design, but should be documented clearly in UI)
-- index_b64.txt is unused legacy file — delete it
+### Known Bugs — FIXED
+- [x] County tooltips now show "County Name, State" instead of FIPS codes (data has `properties.name`)
+- [x] Puerto Rico removed entirely (SVG group, setupPuertoRico function, FIPS entry, region list, abbreviation)
+- [x] Small NE state labels (CT, RI, NJ, DE, MD) now use leader lines to offset outside crowded area
+- [x] Mobile/responsive layout added (media queries at 900px and 600px breakpoints — sidebar stacks above map)
+- [x] DC tooltip now shows "District of Columbia (DC) — not colorable"
+- [x] index_b64.txt deleted from repo
 
 ### Polish Priorities
-- **Restyle to brand colors**: Replace all `#667eea` purple/blue accent with teal brand color from logo (~#2B7A8C primary, lighter teal for hover states). Applies to: sidebar title, buttons, active swatch borders, progress bar, modal titles, links, focus states, tooltips, legend titles, checkbox accents.
-- Responsive/mobile layout
-- Smooth onboarding UX (first-time user should understand the app in 10 seconds)
-- Performance audit (2615-line single file may need modularization eventually)
+- [x] **Restyle to brand colors**: All `#667eea` purple/blue accents replaced with teal (#2B7A8C primary, #3A9BB0 hover, #1D5A6A dark). Only remaining `#667eea` is in the user-facing color palette array (intentional — it's a usable paint color).
+- [x] Responsive/mobile layout (breakpoints at 900px and 600px)
+- [ ] Smooth onboarding UX (first-time user should understand the app in 10 seconds)
+- [ ] Performance audit (~2600-line single file may need modularization eventually)
 
 ---
 
@@ -259,37 +260,38 @@ Everything lives in one HTML file. No build tools, no framework.
 ### Critical Technical Gotchas
 1. **statesGroup transform**: `translate(5,-20) scale(0.95)` is critical. County view resets it to `''` and restores on exit. Forgetting to restore breaks all label positions.
 2. **Color via style.fill**: CSS `.state-path` sets default fill. Coloring MUST use `element.style.fill` (inline style). `setAttribute('fill')` will NOT work.
-3. **Puerto Rico**: REMOVED. Delete the PR SVG group, `setupPuertoRico()` function, and all PR references in index.html.
-4. **DC**: Non-colorable by design. Uses `nonColorable` Set. Excluded from click listeners, Select All, region fills, Invert, and stats count.
+3. **Puerto Rico**: REMOVED. PR SVG group, `setupPuertoRico()` function, FIPS entry, abbreviation, and all PR references have been deleted.
+4. **DC**: Non-colorable by design. Uses `nonColorable` Set. Excluded from click listeners, Select All, region fills, Invert, and stats count. Tooltip shows "not colorable" note. Label hidden via `labelOffsets` `hide: true`.
 5. **Ocean background**: CSS class (`ocean-on`) on map-container, NOT an SVG rect. Prevents visible partition lines.
 6. **Git on Windows CMD**: Commit messages with spaces break. Write message to file, use `git commit -F filename`, then delete.
 7. **GitHub Pages caching**: Hard refresh (Ctrl+Shift+R) after deploy. Deploys take ~15-30 seconds.
 8. **Scale bar**: Text extends +14px below bar's y position. Max y for bottom positions is 645.
 
-### Key Code Sections (line numbers approximate)
-| Section | Lines | Description |
-|---------|-------|-------------|
-| CSS styles | 7-520 | All styling, dark/light mode, sidebar, map, modals |
-| Sidebar HTML | 521-984 | Controls: palette, legend, display, quick fill, export |
-| SVG + map HTML | 985-1030 | SVG element, statesGroup, north arrow, scale bar |
-| Modals | 1048-1095 | Upgrade, county select, clear confirm |
-| appState | 1106-1156 | Central state object with all app data |
-| init/loadUSMap | 1162-1186 | Initialization and TopoJSON loading |
-| fipsToState | 1189-1204 | FIPS code to state name mapping |
-| renderStatesFromTopology | 1206-1330 | Main render with centroid label positioning |
-| ~~setupPuertoRico~~ | ~~1332-1371~~ | REMOVED — delete this function and all PR references |
-| Color/interaction | 1444-1560 | Palette, click handlers, tooltips |
-| Legend | 1565-1648 | Legend builder and display |
-| Quick fill | 1654-1712 | Select all, regions, invert, clear |
-| URL state | 1740-1798 | Base64 encode/decode for shareable URLs |
-| Export | 1804-2235 | PNG, SVG export (remove GeoJSON, CSV export, CSV import) |
-| County view | 2240-2442 | Pro county mode with zoom and back navigation |
-| Event listeners | 2448-2597 | All UI event bindings |
+### Key Code Sections (line numbers approximate — may shift with edits)
+| Section | Description |
+|---------|-------------|
+| CSS styles (~7-860) | All styling, dark/light mode, sidebar, map, modals, responsive media queries |
+| Sidebar HTML | Controls: palette, legend, display, quick fill, export |
+| SVG + map HTML | SVG element, statesGroup, north arrow, scale bar (PR group removed) |
+| Modals | Upgrade, county select, clear confirm |
+| appState | Central state object with all app data |
+| init/loadUSMap | Initialization and TopoJSON loading |
+| fipsToState | FIPS code to state name mapping (50 states + DC, no PR) |
+| renderStatesFromTopology | Main render with centroid labels + leader lines for NE states |
+| Color/interaction | Palette, click handlers, tooltips (DC shows "not colorable") |
+| Legend | Legend builder and display |
+| Quick fill | Select all, regions, invert, clear |
+| URL state | Base64 encode/decode for shareable URLs |
+| Export | PNG, SVG export |
+| County view | Pro county mode with zoom, county tooltips show "Name County, State" |
+| Event listeners | All UI event bindings incl. leader line toggle |
 
 ---
 
 ## Commit History
 ```
+818b4b7 Rebrand to Mapparatus: tier system, state zoom, remove PR/CSV, professional polish
+(pending) Phase 1 bug fixes: county tooltips, remove PR, NE labels, responsive, DC tooltip, brand colors
 7f3dded Fix WA/MA labels, remove background partition by moving ocean to CSS
 a834229 Remove basemap, fix label centering with geometric centroids
 8ad52e2 Make DC non-colorable and fix count to 51
