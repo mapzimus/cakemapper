@@ -193,66 +193,65 @@ A structured collection of map ideas, each with:
 - Binary maps work because they're instant and force people to pick a side
 - Single-state callouts work because the "wait, really?" reaction drives reshares
 
-### Automation Pipeline (OpenClaw-powered)
+### Automation Pipeline (Claude-powered)
 
-**Orchestrator**: OpenClaw (open-source AI agent) with Instagram skill + Puppeteer headless export.
+**Orchestrator**: Claude (via Cowork / Claude Code) handles idea selection, data research, map config generation, caption writing. Manual or API-based posting.
 
 ```
 1. IDEA SELECTION
-   OpenClaw picks an idea from the JSON idea database
+   Claude picks an idea from the JSON idea database (or generates new ones)
    → checks data availability, filters by category/virality score
 
 2. DATA GATHERING
-   OpenClaw fetches/compiles state-by-state data from public sources
+   Claude researches state-by-state data from public sources
    (Census, BLS, BEA, USDA, CDC, FBI UCR, Wikipedia, etc.)
    → assigns each state to a legend category
+   → generates map config JSON with colors, title, legend
 
-3. MAP GENERATION (Headless Export)
-   Puppeteer script loads Mapparatus with URL hash containing:
-   - State-color assignments
-   - Title/subtitle
-   - Legend entries
-   - Display options (logo on, north arrow, scale bar)
-   → waits for render → screenshots as PNG
-   → also exports SVG for website gallery
+3. MAP GENERATION
+   Option A (Manual): Claude generates a Mapparatus share link (URL hash)
+     → Max opens link, map renders, exports PNG
+   Option B (Automated): Puppeteer headless script (to be built)
+     → loads Mapparatus URL with hash → screenshots as PNG
+   Option C (Canva): Claude generates map via Canva MCP for
+     Instagram-optimized formats (1080x1080, Stories, Reels covers)
 
 4. CAPTION & HASHTAGS
-   OpenClaw writes engaging caption with:
+   Claude writes engaging caption with:
    - Hook line (triggers regional pride/debate)
    - Data source credit
    - Platform-specific hashtag set
    - "Made with Mapparatus" + link
 
-5. POSTING (via OpenClaw skills)
-   Instagram: OpenClaw Instagram skill via Meta Content Publishing API
-   → supports photo posts, carousels, Reels, Stories
-   → rate limit: 25-50 posts per 24h rolling window
-   X/Twitter: OpenClaw Twitter skill via API v2
-   TikTok: OpenClaw + Genviral skill for short-form video
-   Pinterest: OpenClaw Pinterest skill
+5. POSTING
+   Phase A (manual): Max posts from Claude-generated content
+   Phase B (API): Direct posting via Meta Content Publishing API,
+     X/Twitter API v2, Pinterest API, TikTok Content Posting API
+   Phase C (scheduled): Claude schedules posts via connected tools
 
 6. ANALYTICS & REFINEMENT
    Track engagement per post → feed back into idea scoring
-   OpenClaw monitors comments for viral signals
+   Monitor comments for viral signals
 ```
 
-### Headless Export Script (to build)
-A Node.js + Puppeteer script that:
-- Takes a map config JSON (colors, title, legend, display options)
-- Encodes it as the Mapparatus URL hash (base64 state format)
-- Launches headless Chrome, loads the app URL with that hash
-- Waits for map render to complete
-- Screenshots as PNG (1200x850 or Instagram-optimized 1080x1080)
-- Also triggers SVG export for website gallery
-- Returns file paths for OpenClaw to pick up and post
+### Map Config JSON Format
+Claude generates configs like this, which encode into Mapparatus URL hashes:
+```json
+{
+  "colors": { "Alabama": "#ff6b6b", "Alaska": "#51cf66", ... },
+  "legend": [{ "color": "#ff6b6b", "label": "East" }, ...],
+  "title": "Map Title Here",
+  "subtitle": "Optional subtitle"
+}
+```
 
 ### Prerequisites for Automated Posting
 - **Instagram**: Business account (linked to Facebook Page) → Meta Developer app → Instagram Graph API → App Review for `instagram_content_publish` permission (1-4 weeks). Account: @mappratus (created)
-- **OpenClaw**: Install Instagram skill from playbooks registry (or via Publora/Post Bridge bridge service)
 - **X / Twitter**: Developer account → API v2 access (free tier allows posting). Straightforward.
-- **TikTok**: TikTok Developer account → Content Posting API + Genviral OpenClaw skill for video.
+- **TikTok**: TikTok Developer account → Content Posting API for video.
 - **Pinterest**: Pinterest Developer account → API access. Relatively easy.
-- **Puppeteer**: Node.js script for headless map export (to be built).
+- **Canva**: Connected via MCP — can generate Instagram-optimized designs directly.
+- **Puppeteer** (optional): Node.js script for headless map export if full automation needed.
 
 ---
 
