@@ -3114,14 +3114,13 @@
           maxY = Math.max(maxY, bbox.y + bbox.height);
         });
 
-        // Rotate state upright: use PCA-like approach on county centroids to find tilt
+        // Rotate state upright using PCA on county centroids
         const centroids = countyPaths.map(p => {
           const b = p.getBBox();
           return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
         });
         const cx = (minX + maxX) / 2;
         const cy = (minY + maxY) / 2;
-        // Find principal axis angle using second moments
         let mxx = 0, myy = 0, mxy = 0;
         centroids.forEach(c => {
           const dx = c.x - cx, dy = c.y - cy;
@@ -3129,22 +3128,32 @@
           myy += dy * dy;
           mxy += dx * dy;
         });
-        // Angle of principal axis
-        let angle = 0.5 * Math.atan2(2 * mxy, mxx - myy);
-        // Convert to degrees; we want the long axis to be vertical
-        let angleDeg = angle * (180 / Math.PI);
-        // Only correct if tilt is moderate (< 30 deg) — avoid flipping wide states
+        // Angle of the principal (longest) axis
+        let angleDeg = 0.5 * Math.atan2(2 * mxy, mxx - myy) * (180 / Math.PI);
         const stateW = maxX - minX;
         const stateH = maxY - minY;
-        if (stateH > stateW && Math.abs(angleDeg) < 30) {
-          // Tall state tilted — rotate to upright
-          statesGroup.setAttribute('transform', `rotate(${-angleDeg}, ${cx}, ${cy})`);
-        } else if (stateW > stateH && Math.abs(angleDeg) > 60 && Math.abs(angleDeg) < 120) {
-          // Wide state — no rotation needed
-          statesGroup.setAttribute('transform', '');
+        // For wide states: rotate so principal axis is horizontal (angle → 0)
+        // For tall states: rotate so principal axis is vertical (angle → 0 after adjusting)
+        let rotateDeg = 0;
+        if (stateW >= stateH) {
+          // Wide state — straighten horizontally
+          rotateDeg = -angleDeg;
+        } else {
+          // Tall state — straighten vertically (principal axis is ~90°, bring to 90°)
+          rotateDeg = -angleDeg;
+        }
+        // Clamp to avoid wild rotations (max ±25°)
+        rotateDeg = Math.max(-25, Math.min(25, rotateDeg));
+        if (Math.abs(rotateDeg) > 1) {
+          statesGroup.setAttribute('transform', `rotate(${rotateDeg}, ${cx}, ${cy})`);
         } else {
           statesGroup.setAttribute('transform', '');
         }
+
+        // Scale down stroke width for county view (borders too thick when zoomed in)
+        countyPaths.forEach(p => {
+          p.style.strokeWidth = '0.3';
+        });
 
         // Recalculate bounds after rotation
         const groupBBox = statesGroup.getBBox();
