@@ -3154,11 +3154,13 @@
             // Scale font relative to county size and viewBox
             const countySize = Math.min(bbox.width, bbox.height);
             const fontSize = Math.max(1.5 * labelScale, Math.min(5 * labelScale, countySize * 0.25));
+            label.setAttribute('class', 'county-label');
             label.style.fontSize = fontSize + 'px';
             label.style.fontWeight = '600';
             label.style.fill = '#b8b8b8';
             label.style.pointerEvents = 'none';
             label.textContent = countyName;
+            if (!appState.showLabels) label.style.display = 'none';
             statesGroup.appendChild(label);
           }
         });
@@ -3319,10 +3321,10 @@
         document.getElementById('onboardingOverlay').classList.add('active');
       });
 
-      // Labels toggle
+      // Labels toggle (handles both state and county labels)
       document.getElementById('toggleLabels').addEventListener('change', (e) => {
         appState.showLabels = e.target.checked;
-        document.querySelectorAll('.state-label').forEach(label => {
+        document.querySelectorAll('.state-label, .county-label').forEach(label => {
           label.style.display = appState.showLabels ? '' : 'none';
         });
         document.querySelectorAll('.leader-line').forEach(line => {
