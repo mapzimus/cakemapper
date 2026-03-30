@@ -1,71 +1,114 @@
-# Cakemapper Handover Document
+# Mapparatus Handover Document
 
 ## Project Summary
-Cakemapper is a single-file HTML web app for creating colored US state maps. Users pick colors, click states, add legends, and export their maps. It runs entirely client-side via GitHub Pages.
+Mapparatus (formerly Cakemapper) is a single-file HTML web app for creating colored US state and county maps. Users pick colors, click states, build legends, and export publication-ready maps. It runs entirely client-side, currently hosted on GitHub Pages with a custom domain.
 
-- **Live site**: https://mapzimus.github.io/cakemapper/
-- **Repo**: https://github.com/mapzimus/cakemapper (branch: `master`)
+- **Live site**: https://mapparatus.org (GitHub Pages with custom domain)
+- **Repo**: https://github.com/mapzimus/cakemapper (branch: `master`, to be renamed `mapparatus`)
 - **Local path (Windows)**: `C:\Users\mhowe\cakemapper\index.html`
-- **Single file**: `index.html` (~2615 lines, all CSS/HTML/JS inline)
+- **Single file**: `index.html` (~2825 lines, all CSS/HTML/JS inline)
+- **Domain**: mapparatus.org (registered via Squarespace/Google Domains)
+- **Email**: max@mapparatus.org (Google Workspace)
 
-## Current State (as of commit 7f3dded)
-The app is fully functional with all core features working:
+## Current State
+The app is fully functional and rebranded as Mapparatus with tiered subscription model (Free/Pro/Enterprise):
 
-- 50 US states + Puerto Rico colorable (DC visible but non-colorable)
-- 24-color palette with custom color support
+- 50 US states colorable (DC visible but non-colorable by design)
+- Puerto Rico removed entirely
+- 24-color palette with custom color support (12 colors on Free tier)
 - Legend builder, quick fill by region, undo, dark/light themes
-- Export to PNG, SVG, GeoJSON, CSV; import from CSV
-- Shareable URL encoding, save/load config files
-- County-level view (Pro feature, unlock codes: CAKEPRO2026 or cakemapper)
+- Export to PNG and SVG (no GeoJSON/CSV export)
+- Pro unlock codes: `MAPPRO2026` or `mapparatus`
+- County-level view (Pro feature)
+- State zoom for individual state county maps (Pro feature)
 - Editable title/subtitle, north arrow, scale bar with position controls
-- Ocean background toggle (CSS-based, no visible partition)
+- Ocean background toggle (CSS-based)
+- Inline SVG logo watermark on map (always on for Free; Pro users can hide)
+- Mobile-friendly export (detects mobile UA, opens image for long-press save)
+- Responsive layout (breakpoints at 900px and 600px)
+- Brand colors: teal (#2B7A8C primary, #3A9BB0 hover, #1D5A6A dark)
+- Small NE state labels use leader lines (DE, CT, RI, MD)
+- Shareable URL encoding, save/load config files (Pro)
 
 ## Architecture Overview
 Everything lives in one HTML file. No build tools, no framework. External dependencies loaded via CDN: `topojson-client@3` for parsing TopoJSON, `html2canvas` for PNG export. Map data comes from `us-atlas@3` (pre-projected Albers USA).
 
-The SVG uses a viewBox of `-20 -30 1010 710`. State paths are rendered inside a `<g>` with `transform="translate(5, -20) scale(0.95)"` which offsets the pre-projected coordinates. Labels use geometric centroid of the largest polygon for positioning, with fine-tune offsets for ~14 irregular states.
+The SVG uses a viewBox of `-20 -30 1010 710`. State paths are rendered inside a `<g>` with `transform="translate(5, -20) scale(0.95)"` which offsets the pre-projected coordinates. Labels use bbox center (`getBBox()`) with hand-tuned manual offsets in the `labelOffsets` object.
 
 ## Key Code Sections (line numbers approximate)
 
-| Section | Lines | Description |
-|---------|-------|-------------|
-| CSS styles | 7-520 | All styling, dark/light mode, sidebar, map, modals |
-| Sidebar HTML | 521-984 | Controls: palette, legend, display, quick fill, export |
-| SVG + map HTML | 985-1030 | SVG element, statesGroup, PR group, north arrow, scale bar |
-| Modals | 1048-1095 | Upgrade, county select, clear confirm |
-| appState | 1106-1156 | Central state object with all app data |
-| init/loadUSMap | 1162-1186 | Initialization and TopoJSON loading |
-| fipsToState | 1189-1204 | FIPS code to state name mapping |
-| renderStatesFromTopology | 1206-1330 | Main render function with centroid label positioning |
-| setupPuertoRico | 1332-1371 | PR path setup with scaled label |
-| Color/interaction | 1444-1560 | Palette, click handlers, tooltips |
-| Legend | 1565-1648 | Legend builder and display |
-| Quick fill | 1654-1712 | Select all, regions, invert, clear |
-| URL state | 1740-1798 | Base64 encode/decode for shareable URLs |
-| Export/Import | 1804-2235 | PNG, SVG, GeoJSON, CSV export; CSV import |
-| County view | 2240-2442 | Pro county mode with zoom and back navigation |
-| Event listeners | 2448-2597 | All UI event bindings |
+| Section | Description |
+|---------|-------------|
+| CSS styles (~7-860) | All styling, dark/light mode, sidebar, map, modals, responsive media queries |
+| Sidebar HTML | Controls: palette, legend, display, quick fill, export, logo toggle |
+| SVG + map HTML | SVG element, statesGroup, north arrow, scale bar, logo watermark |
+| Modals | Upgrade, county select, clear confirm |
+| appState | Central state object with all app data |
+| init/loadUSMap | Initialization and TopoJSON loading |
+| fipsToState | FIPS code to state name mapping (50 states + DC, no PR) |
+| renderStatesFromTopology | Main render with centroid labels + leader lines for NE states |
+| isPro() | Returns `appState.proUnlocked` — used by export and logo toggle |
+| Color/interaction | Palette, click handlers, tooltips (DC shows "not colorable") |
+| Legend | Legend builder and display |
+| Quick fill | Select all, regions, invert, clear |
+| URL state | Base64 encode/decode for shareable URLs |
+| Export (PNG/SVG) | PNG via html2canvas, SVG via XMLSerializer; mobile detection for camera roll |
+| County view | Pro county mode with zoom, tooltips show "Name County, State" |
+| State zoom | Pro feature for individual state county maps |
+| Event listeners | All UI event bindings incl. leader line toggle, logo toggle |
 
 ## Technical Decisions and Gotchas
 
-1. **statesGroup transform**: The `translate(5,-20) scale(0.95)` is critical. County view resets it to `''` and restores it on exit. If you forget to restore it, all state label positions break.
+1. **statesGroup transform**: `translate(5,-20) scale(0.95)` is critical. County view resets it to `''` and restores on exit. Forgetting to restore breaks all label positions.
 
-2. **Color via style.fill**: CSS `.state-path` sets default fill. Coloring must use `element.style.fill` (inline style) to override CSS. `setAttribute('fill')` will NOT work.
+2. **Color via style.fill**: CSS `.state-path` sets default fill. Coloring MUST use `element.style.fill` (inline style). `setAttribute('fill')` will NOT work.
 
-3. **Puerto Rico**: Not in us-atlas data. Manually placed as a separate SVG group with `scale(0.45)`. Its label uses `font-size="22"` to render at ~10px after scaling.
+3. **Puerto Rico**: REMOVED. PR SVG group, `setupPuertoRico()`, FIPS entry, abbreviation, and all PR references deleted.
 
-4. **DC non-colorable**: Uses a `nonColorable` Set. DC is excluded from click listeners, Select All, region fills, Invert, and the stats count. It still renders on the map.
+4. **DC non-colorable**: Uses `nonColorable` Set. Excluded from click listeners, Select All, region fills, Invert, and stats count. Tooltip shows "not colorable" note. Label hidden via `labelOffsets` `hide: true`.
 
-5. **Ocean background**: Implemented as CSS class (`ocean-on`) on map-container, NOT as an SVG rect. This prevents visible partition lines between SVG viewport and page background.
+5. **Ocean background**: CSS class (`ocean-on`) on map-container, NOT an SVG rect. Prevents visible partition lines.
 
-6. **Git on Windows CMD**: Commit messages with spaces break. Write message to file, use `git commit -F filename`, then delete the file.
+6. **Git on Windows CMD**: Commit messages with spaces break. Write message to file, use `git commit -F filename`, then delete.
 
-7. **GitHub Pages caching**: Hard refresh (Ctrl+Shift+R) needed after deploy to see changes. Deploys take ~15-30 seconds after push.
+7. **GitHub Pages caching**: Hard refresh (Ctrl+Shift+R) after deploy. Deploys take ~15-30 seconds.
 
-8. **Scale bar positioning**: Text extends +14px below the bar's y position. Max y for bottom positions is 645 to keep text within viewBox (max y = 680).
+8. **Scale bar**: Text extends +14px below bar's y position. Max y for bottom positions is 645.
+
+9. **SVG namespace**: `innerHTML` on SVG `<g>` elements creates children in the HTML namespace, breaking rendering and export. Use the `setSVGContent()` helper which creates a temp `<svg>` element for proper namespace parsing.
+
+10. **Label positioning**: Labels use bbox center with manual offsets in `labelOffsets`. These are hand-tuned and locked — do NOT change without visual verification. See CLAUDE.md for the full offset table.
+
+11. **Logo watermark**: Inline SVG elements (not external image) at y=580 with scale(0.40). Text splits as "map" (dark teal) + "paratus" (light teal). Logo visibility controlled by `appState.showLogo`; hiding requires Pro.
+
+12. **Mobile export**: Detects mobile via user agent regex. Opens image blob in new tab for long-press camera roll save instead of triggering download (which fails on mobile Safari/Chrome).
+
+## Brand Identity
+- **Name**: Mapparatus
+- **Tagline**: "simple maps, simple tools"
+- **Logo**: Hexagon with map pin icon. Three versions: stacked, horizontal, icon-only
+- **Primary color**: Teal (#2B7A8C / dark #1D5A6A)
+- **Secondary color**: Light teal (#12A6C8 / #3A9BB0)
+- **Typography**: Georgia serif for wordmark, Helvetica Neue for tagline/UI
+- **Logo files**: `/assets/logo-horizontal.svg` (others to be added)
+
+## Subscription Tiers
+
+| Feature | Free | Pro ($5/mo) | Enterprise ($20/mo) |
+|---------|------|-------------|---------------------|
+| State coloring | 50 states | 50 states | 50 states |
+| County view | - | Yes | Yes |
+| State zoom | - | Yes | Yes |
+| Colors | 12 curated | 24 + custom hex | 24 + custom + saved palettes |
+| Subtitle | - | Yes | Yes |
+| Legend | - | Yes | Yes |
+| PNG export | 3/month + watermark | Unlimited, no watermark | Unlimited, white-label |
+| SVG export | - | Yes | Yes |
+| Logo on map | Always on | Can hide | Can hide |
 
 ## Commit History
 ```
+818b4b7 Rebrand to Mapparatus: tier system, state zoom, remove PR/CSV, professional polish
 7f3dded Fix WA/MA labels, remove background partition by moving ocean to CSS
 a834229 Remove basemap, fix label centering with geometric centroids
 8ad52e2 Make DC non-colorable and fix count to 51
@@ -86,27 +129,42 @@ bd45e26 Initial release of Cakemapper
 
 ## Known Issues / Future Work
 
-- **County tooltips**: Show FIPS codes instead of county names (us-atlas counties lack name properties; would need a separate FIPS-to-name lookup)
-- **Puerto Rico shape**: Uses a simplified hand-drawn SVG path, not real geographic data
-- **Small state labels**: CT, RI, NJ, DE, MD labels crowd in the northeast at small viewports
-- **Mobile**: Not optimized for mobile/touch (sidebar takes full width, no responsive layout)
-- **Pro system**: Unlock codes are hardcoded client-side (no real payment/auth)
-- **index_b64.txt**: Unused legacy file in repo, can be deleted
+- **Small NE state labels**: CT, RI, DE, MD use leader lines but still crowd at very small viewports
+- **Mobile**: Responsive layout exists but not fully optimized for touch interactions
+- **Pro system**: Unlock codes are hardcoded client-side (no real payment/auth yet)
+- **Subscription infrastructure**: Needs Vercel + Supabase/Clerk auth + Stripe (Phase 2)
+- **Custom domain**: mapparatus.org configured via Squarespace DNS → GitHub Pages
+- **Social media pipeline**: Instagram (@mappratus), TikTok, X accounts created. OpenClaw automation planned (Phase 4)
+- **Repo rename**: GitHub repo still named "cakemapper", needs rename to "mapparatus"
+
+## Roadmap
+
+1. **Phase 1** (current): Rebrand + polish — mostly complete, remaining: onboarding UX, repo rename
+2. **Phase 2**: Subscription & auth — Vercel hosting, Supabase auth, Stripe payments
+3. **Phase 3**: Hosting & domain — Vercel deployment, SSL, DNS finalization
+4. **Phase 4**: Social media content engine — OpenClaw automation, idea database, headless Puppeteer export
+5. **Phase 5**: Growth & iteration — analytics, A/B testing, gallery, SEO
 
 ## How to Continue Development
 
 1. Clone/pull the repo: `git clone https://github.com/mapzimus/cakemapper.git`
-2. Edit `index.html` directly - it's the only file that matters
-3. Test locally by opening `index.html` in a browser (most features work, but CORS may block TopoJSON fetch from CDN - use a local server like `python -m http.server`)
+2. Edit `index.html` directly — it's the only file that matters
+3. Test locally by opening `index.html` in a browser (use `python -m http.server` for CORS)
 4. Commit and push to master for GitHub Pages deployment
-5. The `.claude/CLAUDE.md` file in the repo contains detailed technical context for AI assistants
+5. See `.claude/CLAUDE.md` for full technical context, label offsets, and phase details
 
 ## File Structure
 ```
 cakemapper/
-  index.html          # The entire app (2615 lines)
-  index_b64.txt       # Unused legacy file
+  index.html              # The entire app (~2825 lines)
+  assets/
+    logo-horizontal.svg   # Horizontal logo (icon + wordmark)
   .claude/
-    CLAUDE.md          # AI assistant context for this project
-  HANDOVER.md          # This document
+    CLAUDE.md             # AI assistant context (detailed technical docs + roadmap)
+  HANDOVER.md             # This document
 ```
+
+## Owner
+- **Name**: Max
+- **Email**: max@mapparatus.org / mhowe.gis@gmail.com
+- **GitHub**: mapzimus

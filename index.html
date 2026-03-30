@@ -1093,7 +1093,7 @@
           </g>
 
           <!-- Logo Watermark -->
-          <g id="logoWatermark" transform="translate(310, 540) scale(0.40)" opacity="0.35">
+          <g id="logoWatermark" transform="translate(310, 580) scale(0.40)" opacity="0.35">
             <g transform="translate(8, 8) scale(1.4)">
               <polygon points="60,0 120,0 150,52 120,104 60,104 30,52" fill="#0D6E8A"/>
               <polygon points="72,14 108,14 126,45 108,76 72,76 54,45" fill="#12A6C8" opacity="0.55"/>
@@ -1101,7 +1101,7 @@
               <polygon points="82,55 98,55 90,78" fill="white"/>
               <circle cx="90" cy="44" r="6" fill="#0D6E8A"/>
             </g>
-            <text x="230" y="96" font-family="Georgia, 'Times New Roman', serif" font-size="72" font-weight="700" fill="#0D6E8A" letter-spacing="-1">mapp<tspan fill="#12A6C8">aratus</tspan></text>
+            <text x="230" y="96" font-family="Georgia, 'Times New Roman', serif" font-size="72" font-weight="700" fill="#0D6E8A" letter-spacing="-1">map<tspan fill="#12A6C8">paratus</tspan></text>
             <line x1="230" y1="112" x2="850" y2="112" stroke="#12A6C8" stroke-width="1" opacity="0.4"/>
             <text x="232" y="138" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="300" fill="#5BA8BB" letter-spacing="5">simple maps, simple tools</text>
           </g>
@@ -1926,11 +1926,29 @@
         ctx.restore();
 
         const slug = (appState.mapTitle || 'mapparatus').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'mapparatus';
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/png');
-        link.download = `${slug}.png`;
-        link.click();
-        showMessage('PNG exported successfully', 'success');
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+          // Mobile: open image in new tab so user can long-press to save to camera roll
+          canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const win = window.open(url, '_blank');
+            if (!win) {
+              // Popup blocked — fall back to showing inline
+              const img = document.createElement('img');
+              img.src = url;
+              img.style.cssText = 'max-width:100%;position:fixed;top:0;left:0;z-index:99999;background:#000;width:100vw;height:100vh;object-fit:contain;';
+              img.onclick = () => { img.remove(); URL.revokeObjectURL(url); };
+              document.body.appendChild(img);
+            }
+            showMessage('Long-press the image to save to your camera roll', 'success');
+          }, 'image/png');
+        } else {
+          const link = document.createElement('a');
+          link.href = canvas.toDataURL('image/png');
+          link.download = `${slug}.png`;
+          link.click();
+          showMessage('PNG exported successfully', 'success');
+        }
       }).catch(err => {
         console.error('Export failed:', err);
         showMessage('Export failed', 'error');

@@ -290,6 +290,8 @@ Everything lives in one HTML file. No build tools, no framework.
 8. **Scale bar**: Text extends +14px below bar's y position. Max y for bottom positions is 645.
 9. **SVG namespace for dynamic content**: `innerHTML` on SVG `<g>` elements creates children in the HTML namespace, breaking rendering and export. Use the `setSVGContent()` helper which creates a temp `<svg>` element for proper namespace parsing.
 10. **Label positioning**: Labels use bbox center (`getBBox()`) with manual offsets in `labelOffsets`. Do NOT change these values — they are hand-tuned and locked in.
+11. **Logo watermark**: Inline SVG elements at `translate(310, 580) scale(0.40)` with opacity 0.35. Text splits as `map` (dark teal #0D6E8A) + `paratus` (light teal #12A6C8). Controlled by `appState.showLogo`; hiding requires `isPro()`. The `isPro()` function returns `appState.proUnlocked`.
+12. **Mobile export**: PNG export detects mobile via `/iPhone|iPad|iPod|Android/i` user agent regex. Opens image blob in new tab for long-press camera roll save instead of download link (which fails on mobile Safari/Chrome). Fallback overlays full-screen image if popup blocked.
 
 ### Label Offsets (LOCKED — do not modify without visual verification)
 These offsets are applied to the bbox center of each state path. Values are in SVG coordinate units.
@@ -329,8 +331,8 @@ const labelOffsets = {
 | Section | Description |
 |---------|-------------|
 | CSS styles (~7-860) | All styling, dark/light mode, sidebar, map, modals, responsive media queries |
-| Sidebar HTML | Controls: palette, legend, display, quick fill, export |
-| SVG + map HTML | SVG element, statesGroup, north arrow, scale bar (PR group removed) |
+| Sidebar HTML | Controls: palette, legend, display, quick fill, export, logo toggle |
+| SVG + map HTML | SVG element, statesGroup, north arrow, scale bar, logo watermark |
 | Modals | Upgrade, county select, clear confirm |
 | appState | Central state object with all app data |
 | init/loadUSMap | Initialization and TopoJSON loading |
@@ -340,16 +342,17 @@ const labelOffsets = {
 | Legend | Legend builder and display |
 | Quick fill | Select all, regions, invert, clear |
 | URL state | Base64 encode/decode for shareable URLs |
-| Export | PNG, SVG export |
+| isPro() | Returns `appState.proUnlocked` — gate for exports and logo toggle |
+| Export (PNG/SVG) | PNG via html2canvas (mobile detection), SVG via XMLSerializer |
 | County view | Pro county mode with zoom, county tooltips show "Name County, State" |
-| Event listeners | All UI event bindings incl. leader line toggle |
+| State zoom | Pro individual state county maps |
+| Event listeners | All UI event bindings incl. leader line toggle, logo toggle |
 
 ---
 
 ## Commit History
 ```
 818b4b7 Rebrand to Mapparatus: tier system, state zoom, remove PR/CSV, professional polish
-(pending) Phase 1 bug fixes: county tooltips, remove PR, NE labels, responsive, DC tooltip, brand colors
 7f3dded Fix WA/MA labels, remove background partition by moving ocean to CSS
 a834229 Remove basemap, fix label centering with geometric centroids
 8ad52e2 Make DC non-colorable and fix count to 51

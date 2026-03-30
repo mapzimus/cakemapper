@@ -15,7 +15,7 @@
     font-size="72"
     font-weight="700"
     fill="#0D6E8A"
-    letter-spacing="-1">mapp<tspan fill="#12A6C8">aratus</tspan></text>
+    letter-spacing="-1">map<tspan fill="#12A6C8">paratus</tspan></text>
 
   <!-- Rule under wordmark -->
   <line x1="230" y1="112" x2="850" y2="112" stroke="#12A6C8" stroke-width="1" opacity="0.4"/>
