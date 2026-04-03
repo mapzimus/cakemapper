@@ -1614,7 +1614,6 @@
       bgColor: '',
       scaleUnit: 'imperial',
       legendTitle: 'Legend',
-      legendTitle: 'Legend',
       legendPosition: 'bottom-right',
       arrowPosition: 'top-right',
       arrowColor: '#ffffff',
@@ -4045,7 +4044,8 @@
       if (annualBtn) annualBtn.addEventListener('click', () => startStripeCheckout('price_1THabF6MmI5fTYyYwzIwTNKF'));
 
       // Pro code
-      document.getElementById('proCodeSubmit').addEventListener('click', () => {
+      const proCodeSubmit = document.getElementById('proCodeSubmit');
+      if (proCodeSubmit) proCodeSubmit.addEventListener('click', () => {
         const code = document.getElementById('proCodeInput').value.trim();
         if (code === 'MAPPRO2026' || code === 'mapparatus') {
           appState.proUnlocked = true;

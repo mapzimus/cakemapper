@@ -15,10 +15,10 @@ Mapparatus (formerly Cakemapper) is a client-side web app for creating colored U
 - **Tagline**: "simple maps, simple tools"
 - **Aesthetic**: Clean, professional, cartographic feel. Teal color palette throughout the app and all marketing materials. The hexagon motif can be used as a design element.
 - **Logo files**: 3 versions provided (stacked, horizontal, icon-only) — store in repo as `/assets/logo-stacked.png`, `/assets/logo-horizontal.png`, `/assets/logo-icon.png`
-- **Current live site**: https://mapparatus.org (GitHub Pages with custom domain)
+- **Current live site**: https://mapparatus.org (Vercel with custom domain)
 - **Repo**: https://github.com/mapzimus/mapparatus
 - **Local path (Windows)**: `C:\Users\mhowe\cakemapper\index.html`
-- **Single file**: `index.html` (~3600 lines, all CSS/HTML/JS inline)
+- **Single file**: `index.html` (~4070 lines, all CSS/HTML/JS inline)
 
 ---
 
@@ -34,7 +34,7 @@ Mapparatus (formerly Cakemapper) is a client-side web app for creating colored U
 - [x] Update .claude/CLAUDE.md in repo
 - [x] Register mapparatus.org domain
 - [x] Set up max@mapparatus.org email (via Google Workspace)
-- [ ] Point domain to hosting (Vercel — see Phase 3)
+- [x] Point domain to hosting (Vercel — done April 2026, A record → 76.76.21.21)
 
 ### Known Bugs — FIXED
 - [x] County tooltips now show "County Name, State" instead of FIPS codes (data has `properties.name`)
@@ -48,7 +48,11 @@ Mapparatus (formerly Cakemapper) is a client-side web app for creating colored U
 - [x] **Restyle to brand colors**: All `#667eea` purple/blue accents replaced with teal (#2B7A8C primary, #3A9BB0 hover, #1D5A6A dark). Only remaining `#667eea` is in the user-facing color palette array (intentional — it's a usable paint color).
 - [x] Responsive/mobile layout (breakpoints at 900px and 600px)
 - [x] Smooth onboarding UX — guided overlay on first visit with step-by-step hints
-- [ ] Performance audit (~2600-line single file may need modularization eventually)
+- [x] Color palette expansion: 30 themed palettes (Nature, Pastels, Bold, Muted, Fun/Pride/USA, Colorblind), expandable dropdown with category headers
+- [x] Colorblind-safe palette button (Wong 2011 palette, one-click)
+- [x] Legend click-to-paint: click legend color to select as active painting color
+- [x] Always-visible "Reset to Default" palette button
+- [ ] Performance audit (~4070-line single file may need modularization eventually)
 
 ---
 
@@ -102,12 +106,27 @@ Mapparatus (formerly Cakemapper) is a client-side web app for creating colored U
 - **Free tier = marketing engine** — Every watermarked export is an ad. 3 exports/month is enough for casual users but pushes regular users to Pro.
 - **State zoom as Pro gate** — Instagram content features state-specific county maps, driving viewers to the site where they hit the Pro wall immediately.
 
-### Tech Decisions
-- **Hosting**: Migrate from GitHub Pages → Vercel (free tier, supports serverless functions)
-- **Auth**: Supabase or Clerk (both have generous free tiers, handle OAuth/email login)
+### Tech Decisions (Implemented)
+- **Hosting**: Vercel (free tier, supports serverless functions) — live at mapparatus.org
+- **Auth**: Supabase (email/password auth, `user_subscriptions` table with RLS)
 - **Payments**: Stripe Checkout + Stripe Billing for subscriptions
-- **No backend rewrite needed**: Auth and payment verification can be handled via serverless API routes on Vercel. The app itself stays client-side.
+- **Supabase URL**: `https://tylnxovujbhdmagugjew.supabase.co`
+- **Supabase anon key**: In `index.html` line ~2537 (NOTE: verify this is a proper JWT `eyJ...` key, not `sb_publishable_...`)
+- **Stripe price IDs**: Monthly `price_1THabF6MmI5fTYyY4WNuFwHe`, Annual `price_1THabF6MmI5fTYyYwzIwTNKF`
+- **Serverless API routes**: `/api/stripe/create-checkout.js`, `/api/stripe/verify-subscription.js`, `/api/stripe/webhook.js`
+- **Vercel env vars** (7 total): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, plus Stripe price IDs hardcoded in client JS
 - **Export tracking (free tier)**: localStorage counter for 3/month PNG limit. No account required for free users.
+
+### Auth Integration Status
+- [x] Supabase project + `user_subscriptions` table + RLS policies
+- [x] Stripe product with monthly/annual prices
+- [x] Stripe webhook at `mapparatus.org/api/stripe/webhook` (3 events)
+- [x] 3 Vercel serverless functions deployed
+- [x] Auth UI in upgrade modal (sign up/in, pricing buttons, sign out)
+- [x] Supabase client init in `index.html` via CDN
+- [x] All 7 env vars set in Vercel dashboard
+- [ ] **END-TO-END TEST NEEDED**: Sign up → confirm email → sign in → checkout → Pro unlock
+- [ ] **Verify Supabase anon key format**: Should be a JWT starting with `eyJ...`, not `sb_publishable_...`
 
 ---
 
@@ -116,12 +135,12 @@ Mapparatus (formerly Cakemapper) is a client-side web app for creating colored U
 
 ### Steps
 - [x] Register mapparatus.org
-- [ ] Create Vercel project, connect to GitHub repo
-- [ ] Configure custom domain in Vercel dashboard
-- [ ] Set up SSL (automatic with Vercel)
-- [ ] Configure DNS (nameservers or CNAME to Vercel)
+- [x] Create Vercel project, connect to GitHub repo (mapzimus-projects)
+- [x] Configure custom domain in Vercel dashboard
+- [x] Set up SSL (automatic with Vercel)
+- [x] Configure DNS: A record 76.76.21.21, CNAME www → cname.vercel-dns.com (Squarespace DNS)
 - [x] Set up email (max@mapparatus.org via Google Workspace)
-- [ ] Verify GitHub Pages redirect or sunset old URL
+- [x] GitHub Pages disabled, Vercel is sole host
 
 ---
 
@@ -273,6 +292,7 @@ Everything lives in one HTML file. No build tools, no framework.
 **External dependencies** (CDN):
 - `topojson-client@3` — TopoJSON parsing
 - `html2canvas` — PNG export
+- `@supabase/supabase-js@2.43.4` — Auth client (UMD bundle in `<head>`)
 
 **Map data**: `us-atlas@3` (pre-projected Albers USA)
 
@@ -285,7 +305,7 @@ Everything lives in one HTML file. No build tools, no framework.
 4. **DC**: Non-colorable by design. Uses `nonColorable` Set. Excluded from click listeners, Select All, region fills, Invert, and stats count. Tooltip shows "not colorable" note. Label hidden via `labelOffsets` `hide: true`.
 5. **Ocean background**: CSS class (`ocean-on`) on map-container, NOT an SVG rect. Prevents visible partition lines.
 6. **Git on Windows CMD**: Commit messages with spaces break. Write message to file, use `git commit -F filename`, then delete.
-7. **GitHub Pages caching**: Hard refresh (Ctrl+Shift+R) after deploy. Deploys take ~15-30 seconds.
+7. **Vercel caching**: Hard refresh (Ctrl+Shift+R) after deploy. Deploys take ~15-30 seconds. Cache-bust with `?v=N` query param if needed.
 8. **Scale bar**: Text extends +14px below bar's y position. Max y for bottom positions is 645.
 9. **SVG namespace for dynamic content**: `innerHTML` on SVG `<g>` elements creates children in the HTML namespace, breaking rendering and export. Use the `setSVGContent()` helper which creates a temp `<svg>` element for proper namespace parsing.
 10. **Label positioning**: Labels use bbox center (`getBBox()`) with manual offsets in `labelOffsets`. Do NOT change these values — they are hand-tuned and locked in.
@@ -329,30 +349,39 @@ const labelOffsets = {
 ### Key Code Sections (line numbers approximate — may shift with edits)
 | Section | Description |
 |---------|-------------|
-| CSS styles (~7-860) | All styling, dark/light mode, sidebar, map, modals, responsive media queries |
-| Sidebar HTML | Controls: palette, legend, display, quick fill, export, logo toggle |
+| CSS styles (~7-890) | All styling, dark/light mode, sidebar, map, modals, responsive media queries, legend-color-edit |
+| Sidebar HTML | Controls: palette (incl. colorblind/reset/more buttons), legend, display, quick fill, export, logo toggle |
 | SVG + map HTML | SVG element, statesGroup, north arrow, scale bar, logo watermark |
-| Modals | Upgrade, county select, clear confirm |
-| appState | Central state object with all app data |
-| init/loadUSMap | Initialization and TopoJSON loading |
+| Modals | Upgrade (auth + pricing + legacy code), county select, clear confirm |
+| appState (~1570) | Central state object: `currentUser`, `subscription`, `proUnlocked`, colors, legend, etc. |
+| init/loadUSMap (~1634) | Async initialization: loads map, then auth, then checkout return handler |
+| Extra Palettes (~2056) | `extraPalettes` (26 themed), `colorblindPalettes` (4), `buildPaletteOptions()`, `applyColorblindPalette()` |
+| Color Ramps (~2145) | 10 ramps, visual picker, steps slider, reverse, apply/reset |
 | fipsToState | FIPS code to state name mapping (50 states + DC, no PR) |
 | renderStatesFromTopology | Main render with centroid labels + leader lines for NE states |
 | Color/interaction | Palette, click handlers, tooltips (DC shows "not colorable") |
-| Legend | Legend builder and display |
+| Legend (~2450) | Legend builder with click-to-paint, edit button, display renderer |
 | Quick fill | Select all, regions, invert, clear |
 | URL state | Base64 encode/decode for shareable URLs |
-| isPro() | Returns `appState.proUnlocked` — gate for exports and logo toggle |
+| isPro() (~2540) | Returns `appState.proUnlocked` — gate for exports and logo toggle |
+| Auth functions (~2565) | Supabase init, sign up/in/out, subscription check, Stripe checkout, UI updates |
+| Export counter (~2730) | Free tier 3/month PNG limit via localStorage |
 | Export (PNG/SVG) | PNG via html2canvas (mobile detection), SVG via XMLSerializer |
 | County view | Pro county mode with zoom, county tooltips show "Name County, State" |
 | State zoom | Pro individual state county maps |
-| Event listeners | All UI event bindings incl. leader line toggle, logo toggle |
+| Event listeners (~3990) | All UI event bindings incl. auth buttons, palette buttons, leader line toggle, logo toggle |
 
 ---
 
 ## Commit History
 ```
-db0834d Visual ramp picker with colored strips and reset palette button
-1be6498 Add color ramps, fix legend positioning, custom legend title, county mode guards
+e3a0351 Expand palette collection: 26 themed palettes with categorized dropdown
+81df43d Add always-visible reset default palette button
+9543789 Add legend click-to-paint, more palettes, and colorblind-safe palette
+965d6ae Fix truncated HTML: add missing </script></body></html> closing tags
+fb19538 Add Supabase auth and Stripe checkout integration
+c50846a Add Vercel serverless API routes for Stripe payments and Supabase auth
+496f6a1 Update docs: repo rename complete, Phase 1 done, new features documented
 db0834d Visual ramp picker with colored strips and reset palette button
 1be6498 Add color ramps, fix legend positioning, custom legend title, county mode guards
 818b4b7 Rebrand to Mapparatus: tier system, state zoom, remove PR/CSV, professional polish
