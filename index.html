@@ -3061,6 +3061,7 @@
 
       const statsBar = document.getElementById('statsBar');
       statsBar.style.display = 'none';
+      statsBar.style.visibility = 'hidden';
       // Hide watermark during export so the exported image is clean
       const watermarkEl = document.getElementById('freeWatermark');
       if (watermarkEl) watermarkEl.style.display = 'none';
@@ -3091,8 +3092,8 @@
       }
 
       const bgColor = appState.bgColor || (appState.darkMode ? '#1a1a2e' : '#f5f5f5');
-      // Wait one animation frame so the browser repaints before html2canvas captures
-      await new Promise(r => requestAnimationFrame(r));
+      // Wait two animation frames so the browser fully repaints before html2canvas captures
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       html2canvas(mapContainer, {
         backgroundColor: bgColor,
         scrollX: 0,
@@ -3139,6 +3140,7 @@
         showMessage('Export failed', 'error');
       }).finally(() => {
         statsBar.style.display = '';
+        statsBar.style.visibility = '';
         if (watermarkEl && !isPro()) watermarkEl.style.display = '';
         if (subtitleWasEmpty && subtitleEl) subtitleEl.style.display = '';
         mapContainer.style.overflow = origOverflow;
